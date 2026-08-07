@@ -1299,7 +1299,7 @@
             var remainDiv = document.createElement('div');
             remainDiv.id = 'remainTimeDisplay';
             remainDiv.style.cssText =
-                'position:fixed;top:16px;right:20px;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);color:#36d399;padding:8px 18px;border-radius:10px;font-size:14px;z-index:9999;font-family:sans-serif;border:1px solid rgba(255,255,255,0.08);box-shadow:0 4px 16px rgba(0,0,0,0.3);cursor:move;user-select:none;';
+                'position:fixed;bottom:16px;right:20px;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);color:#36d399;padding:8px 18px;border-radius:10px;font-size:14px;z-index:9999;font-family:sans-serif;border:1px solid rgba(255,255,255,0.08);box-shadow:0 4px 16px rgba(0,0,0,0.3);cursor:move;user-select:none;';
             remainDiv.textContent = '⏱ 加载中...';
             document.body.appendChild(remainDiv);
 
@@ -1386,35 +1386,33 @@
 
             function doHeartbeat() {
                 var now = Date.now();
-                var LOCK_DURATION = 55000;
+                var LOCK_DURATION = 45000; // 45秒锁，确保每分钟至少心跳一次
 
                 var lastCheck = Storage.get('keyt_last_heartbeat');
                 if (lastCheck && (now - parseInt(lastCheck)) < LOCK_DURATION) return;
 
-                var lockKey = 'keyt_heartbeat_lock';
-                var lockTime = Storage.get(lockKey);
-                if (lockTime && (now - parseInt(lockTime)) < 5000) return;
-                Storage.set(lockKey, now.toString());
-
-                var lastCheck2 = Storage.get('keyt_last_heartbeat');
-                if (lastCheck2 && (now - parseInt(lastCheck2)) < LOCK_DURATION) {
-                    Storage.remove(lockKey);
-                    return;
-                }
+                var card = Storage.get('card');
+                var deviceId = getDeviceId();
+                if (!card || !deviceId) return;
 
                 Storage.set('keyt_last_heartbeat', now.toString());
-                Storage.remove(lockKey);
 
-                fetch('/keyt.cn.php?heartbeat=1&t=' + now, {
+                // 使用卡密验证API作为心跳，带上完整参数让服务器识别在线设备
+                var url = CONFIG.API_URL + '?card=' + encodeURIComponent(card) + '&mac=' + encodeURIComponent(deviceId) + '&app=' + CONFIG.APP_NAME + '&_=' + now;
+
+                fetch(url, {
                     credentials: 'same-origin',
                     keepalive: true
                 }).then(function(resp) {
                     return resp.text();
                 }).then(function(data) {
                     var text = (data || '').trim();
+                    var pos = text.indexOf('|sign=');
+                    if (pos !== -1) text = text.substring(0, pos);
+                    var parts = text.split('|');
 
-                    // 服务端明确判定卡密失效：只更新状态，不强制关页面
-                    if (text === 'EXPIRED') {
+                    // 服务端判定卡密失效
+                    if (parts[0] !== 'ok') {
                         Storage.remove('card_verified');
                         Storage.remove('remain_days');
                         Storage.remove('remain_minutes');
@@ -1429,7 +1427,7 @@
                             el.style.color = '#ff6b6b';
                         }
                     }
-                    // 其他情况（OK等）静默，说明服务端已收到在线状态
+                    // ok 时静默，说明服务端已收到在线状态
                 }).catch(function() {
                     // 网络波动：不提示、不跳转、不累计错误，等下一次心跳
                 });
