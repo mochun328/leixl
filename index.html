@@ -614,44 +614,111 @@ async function videoProcessTask(hwId, lessonId){
     var pointNum = detail.pointNum, contentType = detail.contentType;
     var task = await apiGetTaskInfo(token, schoolId, hwId, lessonId, contentType);
     if (!task){ addLog(vdom.logArea, '⚠️ 跳过: 无法获取进度 ' + lessonId.slice(0,12), 'warn'); return false; }
-    var currentPlay = task.playTime, finishNeed = task.finishPlayTime;
+
+    var currentPlay = task.playTime;        // 毫秒
+    var finishNeed = task.finishPlayTime;   // 毫秒
     vdom.currentLessonId.textContent = lessonId.slice(0, 12) + '...';
+
+    // 已经完成直接返回
     if (currentPlay >= finishNeed){
       addLog(vdom.logArea, '✅ 已完成: ' + lessonId.slice(0,12) + '...', 'success');
       await apiReportVideoPoint(token, hwId, lessonId);
       return true;
     }
-    addLog(vdom.logArea, '📖 开始: ' + lessonId.slice(0,12) + '... (' + Math.round(task.percent * 100) + '%)', 'info');
-    var HEARTBEAT = 120000, INTERVAL = 30000;
-    var remainingMs = finishNeed - currentPlay;
-    var neededRounds = Math.ceil(remainingMs / HEARTBEAT);
+
+    addLog(vdom.logArea, '📖 开始: ' + lessonId.slice(0,12) + '... (当前 ' + Math.round(currentPlay/1000) + 's/' + Math.round(finishNeed/1000) + 's)', 'info');
+
+    var HEARTBEAT = 120000;    // 每轮上报时长（毫秒）
+    var INTERVAL  = 30000;     // 每轮真实等待（毫秒）
     var beginTime = Date.now();
-    var lastPlay = currentPlay;
-    for (var i = 0; i < neededRounds; i++){
-      if (state.videoShouldStop || state.videoIsPaused){ addLog(vdom.logArea, '⏸️ 中断: ' + lessonId.slice(0,12), 'warn'); return false; }
-      var isFirst = (i === 0), isLast = (i === neededRounds - 1);
-      var action, eventType;
-      if (isFirst && isLast){ action = 4; eventType = 'video_oper'; }
-      else if (isFirst){ action = 2; eventType = 'video_oper'; }
-      else if (isLast){ action = 4; eventType = 'video'; }
-      else { action = 1; eventType = 'video'; }
-      await apiSubmitRound(token, sessionId, userId, schoolId, lessonId, CONFIG.BIZCODE, action, eventType, HEARTBEAT, HEARTBEAT, HEARTBEAT, beginTime, pointNum, secret);
-      var pctDone = Math.min(100, Math.round(((i + 1) / neededRounds) * 100));
-      updateVideoPhase('study', pctDone, '');
-      if (isLast) await apiReportVideoPoint(token, hwId, lessonId);
-      await sleep(1200);
+    var lastPlay  = currentPlay;
+    var round     = 0;
+    var MAX_ROUNDS = 200;      // 防止死循环的安全上限
+
+    // ★★★ 核心：while 循环，直到进度真正达标 ★★★
+    while (round < MAX_ROUNDS){
+      // 停止/暂停检查
+      if (state.videoShouldStop || state.videoIsPaused){
+        addLog(vdom.logArea, '⏸️ 中断: ' + lessonId.slice(0,12), 'warn');
+        return false;
+      }
+
+      // 第一轮 action=2，后续 action=1
+      var action = (round === 0) ? 2 : 1;
+      var eventType = (round === 0) ? 'video_oper' : 'video';
+
+      // 上报一轮
+      try {
+        await apiSubmitRound(token, sessionId, userId, schoolId, lessonId, CONFIG.BIZCODE,
+          action, eventType, HEARTBEAT, HEARTBEAT, HEARTBEAT, beginTime, pointNum, secret);
+      } catch (e){ /* 单次失败不中断 */ }
+
+      round++;
+
+      // 等一小会儿让服务端处理
+      await sleep(1500);
+
+      // ★ 每轮都查一次真实进度 ★
       var newTask = await apiGetTaskInfo(token, schoolId, hwId, lessonId, contentType);
+
       if (newTask){
         if (newTask.playTime > lastPlay){
-          addLog(vdom.logArea, '📈 +' + Math.round((newTask.playTime - lastPlay) / 1000) + 's → ' + Math.round(newTask.percent * 100) + '%', 'info');
+          addLog(vdom.logArea,
+            '📈 +' + Math.round((newTask.playTime - lastPlay) / 1000) + 's → ' +
+            Math.round(newTask.percent * 100) + '% (' +
+            Math.round(newTask.playTime/1000) + 's/' +
+            Math.round(finishNeed/1000) + 's)',
+            'info');
         }
         lastPlay = newTask.playTime;
+
+        // 更新进度条（按真实进度算）
+        var realPct = finishNeed > 0 ? Math.min(100, Math.round((newTask.playTime / finishNeed) * 100)) : 0;
+        updateVideoPhase('study', realPct, '');
+
+        // ★ 达标判断 1：playTime >= finishPlayTime ★
         if (newTask.playTime >= finishNeed){
-          addLog(vdom.logArea, '✅ 达标: ' + lessonId.slice(0,12) + '...', 'success');
+          try {
+            await apiSubmitRound(token, sessionId, userId, schoolId, lessonId, CONFIG.BIZCODE,
+              4, 'video', HEARTBEAT, HEARTBEAT, HEARTBEAT, beginTime, pointNum, secret);
+          } catch (e){}
           await apiReportVideoPoint(token, hwId, lessonId);
+          addLog(vdom.logArea, '✅ 达标: ' + lessonId.slice(0,12) + '... (' +
+            Math.round(newTask.playTime/1000) + 's/' + Math.round(finishNeed/1000) + 's)',
+            'success');
+          return true;
+        }
+
+        // ★ 达标判断 2：percent >= 80%（容错，防止服务端 finishPlayTime 偏差）★
+        if (newTask.percent >= 0.8){
+          try {
+            await apiSubmitRound(token, sessionId, userId, schoolId, lessonId, CONFIG.BIZCODE,
+              4, 'video', HEARTBEAT, HEARTBEAT, HEARTBEAT, beginTime, pointNum, secret);
+          } catch (e){}
+          await apiReportVideoPoint(token, hwId, lessonId);
+          addLog(vdom.logArea, '✅ 达标(80%): ' + lessonId.slice(0,12) + '... (' +
+            Math.round(newTask.percent * 100) + '%)',
+            'success');
           return true;
         }
       }
+
+      // 本轮还没达标，等 30 秒继续
+      if (round < MAX_ROUNDS && !state.videoShouldStop && !state.videoIsPaused){
+        await sleep(INTERVAL);
+      }
+    }
+
+    // 超过最大轮数仍未达标
+    addLog(vdom.logArea, '⚠️ 超时未达标: ' + lessonId.slice(0,12) +
+      '... (最后进度 ' + Math.round(lastPlay/1000) + 's/' + Math.round(finishNeed/1000) + 's)',
+      'warn');
+    return false;
+  } catch (e){
+    addLog(vdom.logArea, '❌ 处理异常 ' + lessonId.slice(0,12) + '...: ' + e.message, 'error');
+    return false;
+  }
+}
       if (!isLast && lastPlay < finishNeed) await sleep(INTERVAL + Math.floor(Math.random() * 400) - 200);
     }
     var finalTask = await apiGetTaskInfo(token, schoolId, hwId, lessonId, contentType);
