@@ -1,14 +1,1640 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=http://lxl.636.ltd">
-<script>
-// 优先JS跳转，不等待meta标签
-window.location.replace("http://lxl.636.ltd");
-</script>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>IVY · 自动登录 · 任务勾选 · 三模块刷课</title>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg-start:#dbeafe;--bg-end:#f0f9ff;--card-bg:rgba(255,255,255,.72);--card-border:rgba(255,255,255,.5);--text-primary:#0f172a;--text-secondary:#475569;--accent:#1d4ed8;--accent-light:#3b82f6;--input-bg:rgba(255,255,255,.65);--shadow-color:rgba(30,64,175,.18);--progress-bg:rgba(30,64,175,.12);--progress-fill:linear-gradient(90deg,#1d4ed8,#60a5fa);--btn-primary-bg:linear-gradient(135deg,#1e40af,#3b82f6);--btn-primary-shadow:rgba(59,130,246,.35);--border-glow:rgba(59,130,246,.25);--dot-online:#34d399;--dot-offline:#ef4444;--dot-busy:#eab308;--log-bg:rgba(30,64,175,.06);--toast-bg:rgba(255,255,255,.95);--tab-inactive:rgba(255,255,255,.45);--font-mono:'JetBrains Mono','Fira Code',monospace}
+[data-theme="dark"]{--bg-start:#0a0a0f;--bg-end:#1a1a1a;--card-bg:rgba(26,26,28,.82);--card-border:rgba(255,215,0,.2);--text-primary:#f5f5f5;--text-secondary:#a3a3a3;--accent:#eab308;--accent-light:#facc15;--input-bg:rgba(50,50,50,.7);--shadow-color:rgba(0,0,0,.45);--progress-bg:rgba(234,179,8,.12);--progress-fill:linear-gradient(90deg,#ca8a04,#facc15);--btn-primary-bg:linear-gradient(135deg,#ca8a04,#facc15);--btn-primary-shadow:rgba(234,179,8,.35);--border-glow:rgba(234,179,8,.25);--dot-online:#7ecf9e;--dot-offline:#cf7e7e;--dot-busy:#d4b28c;--log-bg:rgba(0,0,0,.25);--toast-bg:rgba(30,30,34,.95);--tab-inactive:rgba(255,255,255,.08)}
+body{font-family:'PingFang SC','Microsoft YaHei','Segoe UI',sans-serif;min-height:100vh;background:linear-gradient(135deg,var(--bg-start),var(--bg-end));transition:background .5s ease;color:var(--text-primary);overflow-x:hidden}
+.main-content{position:relative;z-index:10;max-width:600px;margin:0 auto;padding:32px 20px 48px;min-height:100vh}
+.title{text-align:center;font-size:3rem;font-weight:800;letter-spacing:12px;background:linear-gradient(135deg,var(--accent),var(--accent-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:14px;filter:drop-shadow(0 4px 12px var(--shadow-color))}
+.title::after{content:'';display:block;width:60px;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);margin:10px auto 0;border-radius:2px}
+.status-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;font-size:.82rem;color:var(--text-secondary);font-weight:500}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--text-secondary);transition:all .5s ease}
+.status-dot.online{background:var(--dot-online);box-shadow:0 0 16px var(--dot-online)}
+.status-dot.offline{background:var(--dot-offline);box-shadow:0 0 16px var(--dot-offline)}
+.status-dot.busy{background:var(--dot-busy);box-shadow:0 0 20px var(--dot-busy);animation:pulse-dot 1.4s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.65}}
+.login-card,.progress-card,.log-card{background:var(--card-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--card-border);border-radius:24px;padding:24px;box-shadow:0 8px 48px var(--shadow-color);margin-bottom:20px}
+.input-group{margin-bottom:14px}
+.input-group label{display:block;font-size:.82rem;font-weight:600;color:var(--text-secondary);margin-bottom:6px;letter-spacing:1px}
+.input-group input{width:100%;padding:12px 16px;border:1.5px solid var(--border-glow);border-radius:14px;background:var(--input-bg);color:var(--text-primary);font-size:1rem;outline:none;transition:all .35s ease}
+.input-group input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--shadow-color)}
+.login-btn{width:100%;padding:14px 20px;border:none;border-radius:14px;background:var(--btn-primary-bg);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 4px 18px var(--btn-primary-shadow);letter-spacing:6px;transition:all .3s ease}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 6px 28px var(--btn-primary-shadow)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+/* 作业卡片区 */
+.hw-section{margin-top:16px;border-top:1px dashed var(--border-glow);padding-top:16px}
+.hw-section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.hw-section-title{font-size:.85rem;font-weight:600;color:var(--text-secondary);letter-spacing:.5px}
+.hw-section-actions{display:flex;gap:8px;flex-wrap:wrap}
+.hw-mini-btn{padding:4px 10px;font-size:.72rem;border-radius:8px;border:1px solid var(--border-glow);background:var(--input-bg);color:var(--text-primary);cursor:pointer;font-family:inherit;transition:.2s}
+.hw-mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ★ 关键修复 1：外层容器滚动，加 overscroll-behavior: contain 阻止滚动传递到主页面 */
+.hw-cards{
+  display:flex;flex-direction:column;gap:10px;
+  max-height:65vh;
+  overflow-y:auto;
+  overscroll-behavior:contain;                /* ★ 阻止滚动链传递 */
+  -webkit-overflow-scrolling:touch;
+  padding:2px;
+}
+.hw-cards::-webkit-scrollbar{width:4px}
+.hw-cards::-webkit-scrollbar-thumb{background:var(--border-glow);border-radius:10px}
+
+.hw-card{background:var(--input-bg);border:1.5px solid var(--border-glow);border-radius:14px;overflow:hidden;transition:.2s;flex-shrink:0}
+.hw-card.expanded{border-color:var(--accent)}
+.hw-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;transition:background .2s}
+.hw-card-header:hover{background:var(--progress-bg)}
+.hw-card-icon{font-size:1.1rem;flex-shrink:0}
+.hw-card-title{flex:1;min-width:0;font-size:.88rem;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hw-card-meta{font-size:.7rem;color:var(--text-secondary);flex-shrink:0;display:flex;gap:6px;align-items:center}
+.hw-card-meta .badge{background:var(--progress-bg);color:var(--accent);padding:1px 6px;border-radius:6px;font-weight:600}
+.hw-card-meta .task-count-badge{background:var(--progress-bg);color:var(--accent);padding:1px 6px;border-radius:6px;font-weight:600}
+.hw-card-arrow{font-size:.8rem;color:var(--text-secondary);flex-shrink:0;transition:transform .3s}
+.hw-card.expanded .hw-card-arrow{transform:rotate(90deg)}
+.hw-card-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.hw-card.expanded .hw-card-body{max-height:3000px}
+
+/* ★ 关键修复 2：展开后的任务列表加独立滚动 + overscroll-behavior: contain */
+.hw-card-body-inner{
+  padding:10px 12px;
+  background:rgba(0,0,0,.02);
+  max-height:340px;                 /* ★ 任务列表本身限制高度 */
+  overflow-y:auto;                  /* ★ 独立滚动 */
+  overscroll-behavior:contain;      /* ★ 阻止滚动传递 */
+  -webkit-overflow-scrolling:touch;
+}
+.hw-card-body-inner::-webkit-scrollbar{width:4px}
+.hw-card-body-inner::-webkit-scrollbar-thumb{background:var(--border-glow);border-radius:10px}
+[data-theme="dark"] .hw-card-body-inner{background:rgba(255,255,255,.03)}
+.hw-loading{text-align:center;padding:14px;font-size:.78rem;color:var(--text-secondary);opacity:.7}
+
+/* 任务列表 */
+.task-list{display:flex;flex-direction:column;gap:6px}
+.task-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .2s;background:var(--card-bg);border:1px solid transparent;font-size:.78rem}
+.task-item:hover{background:var(--progress-bg)}
+.task-item.checked{background:var(--progress-bg);border-color:var(--accent)}
+.task-item input[type=checkbox]{width:14px;height:14px;margin-top:2px;cursor:pointer;accent-color:var(--accent);flex-shrink:0}
+.task-item .task-main{flex:1;min-width:0}
+.task-item .task-title{font-weight:600;color:var(--text-primary);display:block;line-height:1.4;word-break:break-all}
+.task-item .task-meta{font-size:.68rem;color:var(--text-secondary);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.task-item .task-meta .type-tag{background:var(--progress-bg);color:var(--accent);padding:1px 6px;border-radius:5px;font-weight:600;font-size:.65rem}
+.task-item .task-meta .done-tag{color:var(--dot-online);font-weight:600}
+.hw-empty{text-align:center;padding:18px;font-size:.8rem;color:var(--text-secondary);opacity:.7}
+.hw-login-hint{text-align:center;padding:18px;font-size:.82rem;color:var(--text-secondary);opacity:.8}
+/* Tab */
+.tab-nav{display:flex;gap:4px;background:var(--tab-inactive);border-radius:16px;padding:4px;border:1px solid var(--border-glow);margin-bottom:20px}
+.tab-btn{flex:1;padding:12px 0;border:none;border-radius:12px;background:transparent;color:var(--text-secondary);font-size:.9rem;font-weight:600;cursor:pointer;transition:all .3s ease;font-family:inherit}
+.tab-btn.active{background:var(--card-bg);color:var(--text-primary);box-shadow:0 4px 20px var(--shadow-color)}
+.tab-panel{display:none;animation:fadeSlide .35s ease}
+.tab-panel.active{display:block}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.progress-item{margin-bottom:16px}
+.progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.progress-label{font-size:.84rem;font-weight:600;color:var(--text-secondary)}
+.progress-percent{font-size:.78rem;font-weight:700;color:var(--accent);background:var(--progress-bg);padding:2px 8px;border-radius:8px}
+.progress-bar{height:8px;background:var(--progress-bg);border-radius:6px;overflow:hidden;position:relative}
+.total-progress .progress-bar{height:14px;border:1px solid var(--border-glow)}
+.progress-fill{height:100%;background:var(--progress-fill);border-radius:6px;transition:width .8s cubic-bezier(.65,0,.35,1)}
+.progress-fill.done{background:linear-gradient(90deg,#34d399,#6ee7b7)}
+.phase-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:16px;padding-top:16px;border-top:1px dashed var(--border-glow)}
+.phase-item{display:flex;align-items:center;gap:10px}
+.phase-item .name{font-size:.78rem;color:var(--text-secondary);width:56px;flex-shrink:0}
+.phase-item .track{flex:1;height:4px;background:var(--progress-bg);border-radius:20px;overflow:hidden;min-width:30px}
+.phase-item .track .fill{height:100%;border-radius:20px;background:var(--progress-fill);width:0%;transition:width .9s}
+.phase-item .track .fill.done{background:linear-gradient(90deg,#34d399,#6ee7b7)}
+.phase-item .status-icon{font-size:12px;width:18px;text-align:center;flex-shrink:0;color:var(--text-secondary)}
+.phase-item .status-icon.done{color:var(--dot-online)}
+.phase-item .status-icon.active{color:var(--accent)}
+.phase-item .status-icon.error{color:var(--dot-offline)}
+.task-info{display:flex;justify-content:space-around;padding-top:16px;margin-top:16px;border-top:1px dashed var(--border-glow);flex-wrap:wrap;gap:8px}
+.task-count{text-align:center;padding:8px 16px;border-radius:14px;background:var(--progress-bg)}
+.task-count .number{font-size:1.5rem;font-weight:800;color:var(--accent);line-height:1.4}
+.task-count .label{font-size:.72rem;color:var(--text-secondary);margin-top:2px}
+.log-card{padding:18px 20px}
+.log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.log-title{font-size:.84rem;font-weight:600;color:var(--text-secondary);letter-spacing:.8px}
+.log-count{font-size:.72rem;color:var(--text-secondary);opacity:.7}
+.log-area{background:var(--log-bg);border-radius:14px;padding:14px 16px;min-height:100px;max-height:200px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid var(--border-glow);font-family:var(--font-mono);font-size:12px;line-height:1.8;color:var(--text-secondary)}
+.log-area::-webkit-scrollbar{width:4px}
+.log-area::-webkit-scrollbar-thumb{background:var(--border-glow);border-radius:10px}
+.log-entry{padding:1px 0}
+.log-entry .time{color:var(--text-secondary);margin-right:10px;font-size:10px;opacity:.6}
+.log-entry .msg.success{color:var(--dot-online)}
+.log-entry .msg.error{color:var(--dot-offline)}
+.log-entry .msg.warn{color:var(--dot-busy)}
+.log-entry .msg.info{color:var(--accent)}
+.log-empty{color:var(--text-secondary);text-align:center;padding:26px 0;font-size:13px;opacity:.6}
+.paper-hint{display:flex;align-items:center;gap:8px;background:var(--progress-bg);border-radius:10px;padding:8px 14px;margin-top:12px;font-size:.78rem;color:var(--text-secondary);border:1px dashed var(--border-glow)}
+.paper-hint .badge{background:var(--accent);color:#fff;border-radius:6px;padding:1px 8px;font-size:.7rem;font-weight:700}
+.actions{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.actions .btn{width:100%;padding:14px 20px;border:none;border-radius:14px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .3s ease;letter-spacing:2px;display:flex;align-items:center;justify-content:center;gap:8px}
+.actions .btn-primary{background:var(--btn-primary-bg);color:#fff;box-shadow:0 4px 18px var(--btn-primary-shadow)}
+.actions .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px var(--btn-primary-shadow)}
+.actions .btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.actions .btn-secondary{background:var(--input-bg);color:var(--text-primary);border:1.5px solid var(--border-glow)}
+.actions .btn-secondary:hover{border-color:var(--accent);transform:translateY(-2px)}
+.actions .btn-secondary:disabled{opacity:.25;cursor:not-allowed}
+.actions .btn-danger{background:rgba(239,68,68,.12);color:#ef4444;border:1.5px solid rgba(239,68,68,.15)}
+.actions .btn-danger:hover{background:var(--card-bg)}
+.actions .btn-danger:disabled{opacity:.25;cursor:not-allowed}
+.toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;width:90%;max-width:440px;pointer-events:none}
+.toast{background:var(--toast-bg);backdrop-filter:blur(20px);border:1px solid var(--border-glow);border-radius:14px;padding:14px 22px;color:var(--text-primary);font-size:14px;font-weight:500;box-shadow:0 8px 40px var(--shadow-color);display:flex;align-items:center;gap:14px;margin-bottom:10px;transform:translateY(20px);opacity:0;animation:toastIn .45s cubic-bezier(.34,1.56,.64,1) forwards}
+.toast.out{animation:toastOut .35s ease forwards}
+.toast .icon{font-size:20px}
+@keyframes toastIn{to{transform:translateY(0);opacity:1}}
+@keyframes toastOut{to{transform:translateY(20px);opacity:0}}
+.theme-toggle{position:fixed;top:20px;left:20px;z-index:1000;padding:10px 18px;border:1.5px solid var(--border-glow);border-radius:14px;background:var(--card-bg);backdrop-filter:blur(14px);color:var(--text-primary);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .3s ease;display:flex;align-items:center;gap:8px}
+.theme-toggle:hover{transform:scale(1.05)}
+.app-footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:10px 0 4px;opacity:.35}
+@media(max-width:600px){.main-content{padding:20px 14px 36px}.title{font-size:2rem;letter-spacing:5px}.login-card,.progress-card,.log-card{padding:20px 16px}.hw-card-title{font-size:.82rem}.hw-cards{max-height:60vh}.hw-card-body-inner{max-height:300px}}
+</style>
 </head>
 <body>
-<!-- 空body，无任何文字、元素 -->
+
+<button class="theme-toggle" id="themeToggle"><span class="icon">🌙</span><span class="text">切换黑夜模式</span></button>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="main-content">
+  <h1 class="title">IVY</h1>
+  <div class="status-bar"><span id="statusLabel">就绪</span><span class="status-dot" id="statusDot"></span></div>
+
+  <div class="login-card">
+    <div class="input-group"><label>👤 账号</label><input type="text" id="usernameInput" placeholder="请输入账号"></div>
+    <div class="input-group"><label>🔒 密码</label><input type="password" id="passwordInput" placeholder="学校默认密码 985211" value="985211"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="login-btn" id="loginBtn" style="flex:1;">🚀 登录</button>
+      <button class="login-btn" id="logoutBtn" style="flex:0.4;display:none;background:var(--input-bg);color:var(--text-primary);box-shadow:none;border:1.5px solid var(--border-glow);letter-spacing:2px;">退出</button>
+    </div>
+    <div id="loginSuccess" style="display:none;text-align:center;margin-top:12px;">
+      <div style="font-size:14px;font-weight:600;color:var(--dot-online);">✅ 已登录</div>
+      <span style="display:block;font-size:12px;color:var(--text-secondary);margin-top:4px;" id="userInfoDisplay"></span>
+    </div>
+
+    <div class="hw-section">
+      <div class="hw-section-header">
+        <span class="hw-section-title">📋 作业列表 <span id="selectedCount" style="color:var(--accent);">（未加载）</span></span>
+        <div class="hw-section-actions">
+          <button class="hw-mini-btn" id="expandAllBtn">展开全部</button>
+          <button class="hw-mini-btn" id="collapseAllBtn">收起全部</button>
+          <button class="hw-mini-btn" id="selectAllTasksBtn">全选任务</button>
+          <button class="hw-mini-btn" id="clearAllTasksBtn">清空勾选</button>
+          <button class="hw-mini-btn" id="refreshHwBtn">刷新</button>
+        </div>
+      </div>
+      <div class="hw-cards" id="homeworkCards">
+        <div class="hw-login-hint">请先登录，登录后自动获取作业列表<br>点击作业卡片展开查看内部任务</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="tabVideo">📺 视频刷课</button>
+    <button class="tab-btn" data-tab="tabHomework">📝 课后习题</button>
+    <button class="tab-btn" data-tab="tabPaper">📄 试卷刷题</button>
+  </div>
+
+  <div class="tab-panel active" id="tabVideo">
+    <div class="progress-card">
+      <div class="progress-item total-progress">
+        <div class="progress-header"><span class="progress-label">📊 视频进度</span><span class="progress-percent" id="vTotalPctLabel">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="vTotalProgressFill" style="width:0%"></div></div>
+      </div>
+      <div class="phase-grid">
+        <div class="phase-item"><span class="name">登录</span><div class="track"><div class="fill" id="vPhaseLogin"></div></div><span class="status-icon" id="vPhaseLoginIcon">○</span></div>
+        <div class="phase-item"><span class="name">加载任务</span><div class="track"><div class="fill" id="vPhaseFetch"></div></div><span class="status-icon" id="vPhaseFetchIcon">○</span></div>
+        <div class="phase-item"><span class="name">刷课中</span><div class="track"><div class="fill" id="vPhaseStudy"></div></div><span class="status-icon" id="vPhaseStudyIcon">○</span></div>
+        <div class="phase-item"><span class="name">完成</span><div class="track"><div class="fill" id="vPhaseDone"></div></div><span class="status-icon" id="vPhaseDoneIcon">○</span></div>
+      </div>
+      <div class="task-info">
+        <div class="task-count"><div class="number" id="vTaskCounter">0/0</div><div class="label">任务进度</div></div>
+        <div class="task-count"><div class="number" id="vCurrentLessonId">--</div><div class="label">当前课时</div></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="vStartBtn" disabled>▶ 开始刷选中的视频</button>
+      <button class="btn btn-secondary" id="vPauseBtn" disabled>⏸ 暂停</button>
+      <button class="btn btn-danger" id="vStopBtn" disabled>⏹ 停止</button>
+    </div>
+    <div class="log-card">
+      <div class="log-header"><span class="log-title">📋 运行日志</span><span class="log-count" id="vLogCount">0 条</span></div>
+      <div class="log-area" id="vLogArea"><div class="log-empty">等待操作...</div></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tabHomework">
+    <div class="progress-card">
+      <div class="progress-item total-progress">
+        <div class="progress-header"><span class="progress-label">📊 习题进度</span><span class="progress-percent" id="hTotalPctLabel">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="hTotalProgressFill" style="width:0%"></div></div>
+      </div>
+      <div class="phase-grid">
+        <div class="phase-item"><span class="name">登录</span><div class="track"><div class="fill" id="hPhaseLogin"></div></div><span class="status-icon" id="hPhaseLoginIcon">○</span></div>
+        <div class="phase-item"><span class="name">加载任务</span><div class="track"><div class="fill" id="hPhaseFetch"></div></div><span class="status-icon" id="hPhaseFetchIcon">○</span></div>
+        <div class="phase-item"><span class="name">提交中</span><div class="track"><div class="fill" id="hPhaseSubmit"></div></div><span class="status-icon" id="hPhaseSubmitIcon">○</span></div>
+        <div class="phase-item"><span class="name">完成</span><div class="track"><div class="fill" id="hPhaseDone"></div></div><span class="status-icon" id="hPhaseDoneIcon">○</span></div>
+      </div>
+      <div class="task-info">
+        <div class="task-count"><div class="number" id="hTaskCounter">0/0</div><div class="label">习题进度</div></div>
+        <div class="task-count"><div class="number" id="hCurrentPaper">--</div><div class="label">当前习题</div></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="hStartBtn" disabled>▶ 开始刷选中的习题</button>
+      <button class="btn btn-secondary" id="hPauseBtn" disabled>⏸ 暂停</button>
+      <button class="btn btn-danger" id="hStopBtn" disabled>⏹ 停止</button>
+    </div>
+    <div class="log-card">
+      <div class="log-header"><span class="log-title">📋 习题日志</span><span class="log-count" id="hLogCount">0 条</span></div>
+      <div class="log-area" id="hLogArea"><div class="log-empty">等待操作...</div></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tabPaper">
+    <div class="progress-card">
+      <div class="progress-item total-progress">
+        <div class="progress-header"><span class="progress-label">📊 试卷进度</span><span class="progress-percent" id="pTotalPctLabel">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="pTotalProgressFill" style="width:0%"></div></div>
+      </div>
+      <div class="phase-grid">
+        <div class="phase-item"><span class="name">登录</span><div class="track"><div class="fill" id="pPhaseLogin"></div></div><span class="status-icon" id="pPhaseLoginIcon">○</span></div>
+        <div class="phase-item"><span class="name">加载任务</span><div class="track"><div class="fill" id="pPhaseFetch"></div></div><span class="status-icon" id="pPhaseFetchIcon">○</span></div>
+        <div class="phase-item"><span class="name">提交中</span><div class="track"><div class="fill" id="pPhaseSubmit"></div></div><span class="status-icon" id="pPhaseSubmitIcon">○</span></div>
+        <div class="phase-item"><span class="name">完成</span><div class="track"><div class="fill" id="pPhaseDone"></div></div><span class="status-icon" id="pPhaseDoneIcon">○</span></div>
+      </div>
+      <div class="paper-hint"><span class="badge">⚠️ 仅选择题</span><span>试卷刷题仅自动完成选择题，主观题跳过</span></div>
+      <div class="task-info">
+        <div class="task-count"><div class="number" id="pTaskCounter">0/0</div><div class="label">试卷进度</div></div>
+        <div class="task-count"><div class="number" id="pCurrentPaper">--</div><div class="label">当前试卷</div></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="pStartBtn" disabled>▶ 开始刷选中的试卷</button>
+      <button class="btn btn-secondary" id="pPauseBtn" disabled>⏸ 暂停</button>
+      <button class="btn btn-danger" id="pStopBtn" disabled>⏹ 停止</button>
+    </div>
+    <div class="log-card">
+      <div class="log-header"><span class="log-title">📋 试卷日志</span><span class="log-count" id="pLogCount">0 条</span></div>
+      <div class="log-area" id="pLogArea"><div class="log-empty">等待操作...</div></div>
+    </div>
+  </div>
+
+  <div class="app-footer">IVY · 自动登录 · 任务勾选 · v6.1</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var CONFIG = {
+  BASE_URL: 'https://gateway.ewt360.com',
+  REPORT_URL: 'https://gateway.ewt360.com/api/homeworkprod/homework/student/reportVideoPoint',
+  REPORT_KEY: '4dcc69ed56d6',
+  BIZCODE: 'video',
+  UA: 'Mozilla/5.0 (Linux; Android 13; M2102J2SC Build/TKQ1.221114.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/111.0.5563.116 Mobile Safari/537.36;Umeng4Aplus/1.0.0 EWT/11.7.5/com.mistong.ewt360 Channel/ewt360',
+  SCAN_CONCURRENCY: 5,
+  HOMEWORK_BIZ_CODE: '204',
+  PAPER_BIZ_CODE: '205',
+  AES_KEY: '20171109124536982017110912453698',
+  AES_IV: '2017110912453698',
+  SECRET_WEB: 'bdc739ff2dcf',
+  BATCH_SIZE: 30
+};
+
+var state = {
+  token: '', userId: '', schoolId: 20322, username: '', isLoggedIn: false,
+  homeworkList: [],
+  homeworkTasks: {},
+  hwTaskLoading: {},
+  expandedHwIds: new Set(),
+  selectedTaskKeys: new Set(),
+  videoIsRunning: false, videoIsPaused: false, videoShouldStop: false, videoTotal: 0, videoCompleted: 0, videoSecret: '', videoSessionId: '',
+  hwIsRunning: false, hwIsPaused: false, hwShouldStop: false, hwTotal: 0, hwCompleted: 0,
+  pIsRunning: false, pIsPaused: false, pShouldStop: false, pTotal: 0, pCompleted: 0
+};
+
+function $(s){ return document.querySelector(s); }
+function $$(s){ return document.querySelectorAll(s); }
+
+var dom = {
+  statusDot: $('#statusDot'), statusLabel: $('#statusLabel'), toastContainer: $('#toastContainer'),
+  tabBtns: $$('.tab-btn'), homeworkCards: $('#homeworkCards'), selectedCount: $('#selectedCount')
+};
+var vdom = {
+  totalPctLabel: $('#vTotalPctLabel'), totalProgressFill: $('#vTotalProgressFill'),
+  phaseLogin: $('#vPhaseLogin'), phaseLoginIcon: $('#vPhaseLoginIcon'),
+  phaseFetch: $('#vPhaseFetch'), phaseFetchIcon: $('#vPhaseFetchIcon'),
+  phaseStudy: $('#vPhaseStudy'), phaseStudyIcon: $('#vPhaseStudyIcon'),
+  phaseDone: $('#vPhaseDone'), phaseDoneIcon: $('#vPhaseDoneIcon'),
+  taskCounter: $('#vTaskCounter'), currentLessonId: $('#vCurrentLessonId'),
+  startBtn: $('#vStartBtn'), pauseBtn: $('#vPauseBtn'), stopBtn: $('#vStopBtn'),
+  logArea: $('#vLogArea'), logCount: $('#vLogCount')
+};
+var hdom = {
+  totalPctLabel: $('#hTotalPctLabel'), totalProgressFill: $('#hTotalProgressFill'),
+  phaseLogin: $('#hPhaseLogin'), phaseLoginIcon: $('#hPhaseLoginIcon'),
+  phaseFetch: $('#hPhaseFetch'), phaseFetchIcon: $('#hPhaseFetchIcon'),
+  phaseSubmit: $('#hPhaseSubmit'), phaseSubmitIcon: $('#hPhaseSubmitIcon'),
+  phaseDone: $('#hPhaseDone'), phaseDoneIcon: $('#hPhaseDoneIcon'),
+  taskCounter: $('#hTaskCounter'), currentPaper: $('#hCurrentPaper'),
+  startBtn: $('#hStartBtn'), pauseBtn: $('#hPauseBtn'), stopBtn: $('#hStopBtn'),
+  logArea: $('#hLogArea'), logCount: $('#hLogCount')
+};
+var pdom = {
+  totalPctLabel: $('#pTotalPctLabel'), totalProgressFill: $('#pTotalProgressFill'),
+  phaseLogin: $('#pPhaseLogin'), phaseLoginIcon: $('#pPhaseLoginIcon'),
+  phaseFetch: $('#pPhaseFetch'), phaseFetchIcon: $('#pPhaseFetchIcon'),
+  phaseSubmit: $('#pPhaseSubmit'), phaseSubmitIcon: $('#pPhaseSubmitIcon'),
+  phaseDone: $('#pPhaseDone'), phaseDoneIcon: $('#pPhaseDoneIcon'),
+  taskCounter: $('#pTaskCounter'), currentPaper: $('#pCurrentPaper'),
+  startBtn: $('#pStartBtn'), pauseBtn: $('#pPauseBtn'), stopBtn: $('#pStopBtn'),
+  logArea: $('#pLogArea'), logCount: $('#pLogCount')
+};
+
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function md5(str){ return CryptoJS.MD5(str).toString().toUpperCase(); }
+function hmacSha1(key, data){ return CryptoJS.HmacSHA1(data, key).toString(CryptoJS.enc.Hex); }
+function aesEncrypt(text){
+  var key = CryptoJS.enc.Utf8.parse(CONFIG.AES_KEY);
+  var iv = CryptoJS.enc.Utf8.parse(CONFIG.AES_IV);
+  return CryptoJS.AES.encrypt(text, key, { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 })
+    .ciphertext.toString(CryptoJS.enc.Hex).toUpperCase();
+}
+function getTimestamp(){ return String(Date.now()); }
+function generateSign(ts){ return md5(ts + CONFIG.SECRET_WEB); }
+
+function getHeaders(token, extra){
+  var h = {
+    'Host': 'gateway.ewt360.com', 'accept': 'application/json, text/plain, */*',
+    'user-agent': CONFIG.UA, 'token': token || state.token, 'content-type': 'application/json',
+    'origin': 'https://web.ewt360.com', 'referer': 'https://web.ewt360.com/',
+    'accept-encoding': 'gzip, deflate, br', 'accept-language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7'
+  };
+  if (extra) Object.assign(h, extra);
+  return h;
+}
+function getTokenHeaders(token){
+  return { 'Content-Type': 'application/json', 'token': token || state.token };
+}
+
+function showToast(message, type, duration){
+  type = type || 'info'; duration = duration || 3000;
+  var icons = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };
+  var toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.innerHTML = '<span class="icon">' + (icons[type] || 'ℹ️') + '</span><span>' + message + '</span>';
+  dom.toastContainer.appendChild(toast);
+  setTimeout(function(){ toast.classList.add('out'); setTimeout(function(){ toast.remove(); }, 400); }, duration);
+}
+
+function addLog(area, message, type){
+  type = type || 'info';
+  var empty = area.querySelector('.log-empty');
+  if (empty) empty.remove();
+  var entry = document.createElement('div');
+  entry.className = 'log-entry';
+  var time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  entry.innerHTML = '<span class="time">[' + time + ']</span><span class="msg ' + type + '">' + message + '</span>';
+  area.appendChild(entry);
+  area.scrollTop = area.scrollHeight;
+  var count = area.querySelectorAll('.log-entry').length;
+  var label = area.id === 'vLogArea' ? vdom.logCount : (area.id === 'hLogArea' ? hdom.logCount : pdom.logCount);
+  if (label) label.textContent = count + ' 条';
+  while (area.querySelectorAll('.log-entry').length > 300) { area.querySelector('.log-entry').remove(); }
+}
+
+function setStatus(status, label){
+  var dot = dom.statusDot;
+  dot.className = 'status-dot';
+  if (status === 'online'){ dot.classList.add('online'); dom.statusLabel.textContent = label || '在线'; }
+  else if (status === 'busy'){ dot.classList.add('busy'); dom.statusLabel.textContent = label || '运行中'; }
+  else if (status === 'offline'){ dot.classList.add('offline'); dom.statusLabel.textContent = label || '离线'; }
+  else { dom.statusLabel.textContent = label || '就绪'; }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+// ============================================================
+// 登录 / 用户信息 / 作业列表
+// ============================================================
+async function apiLogin(username, password){
+  var timestamp = getTimestamp();
+  var sign = generateSign(timestamp);
+  var encryptedPassword = aesEncrypt(password);
+  var url = CONFIG.BASE_URL + '/api/authcenter/v2/oauth/login/account';
+  var body = { autoLogin: true, password: encryptedPassword, platform: 1, userName: username };
+  var headers = {
+    'Content-Type': 'application/json; charset=UTF-8',
+    'platform': '1', 'secretId': '2', 'timestamp': timestamp, 'sign': sign,
+    'User-Agent': CONFIG.UA, 'Referer': 'https://web.ewt360.com/', 'Origin': 'https://web.ewt360.com/'
+  };
+  var resp = await fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (data.success && data.code === '200') return data.data.token;
+  throw new Error(data.message || data.msg || '登录失败');
+}
+
+async function apiGetUserInfo(token){
+  var url = CONFIG.BASE_URL + '/api/eteacherproduct/school/getSchoolUserInfo';
+  var resp = await fetch(url, { method: 'GET', headers: { token: token, Host: 'gateway.ewt360.com' } });
+  var data = await resp.json();
+  if (!data.success) throw new Error('获取用户信息失败');
+  return { schoolId: data.data.schoolId, userId: data.data.userId };
+}
+
+async function apiGetHomeworkList(){
+  var url = CONFIG.BASE_URL + '/api/homeworkprod/homework/student/getStudentHomeworkInfo';
+  var body = { schoolId: state.schoolId, subject: null, type: null, status: 2, pageIndex: 1, pageSize: 50, notClassSetting: 0 };
+  var headers = {
+    'Content-Type': 'application/json;charset=UTF-8', 'Accept': 'application/json, text/plain, */*',
+    'token': state.token, 'X-Requested-With': 'mark.via',
+    'referUrl': 'https://teacher.ewt360.com/ewtbend/bend/index/index.html#/student/homework',
+    'Origin': 'https://teacher.ewt360.com', 'Referer': 'https://teacher.ewt360.com/'
+  };
+  var resp = await fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (!data.success) throw new Error(data.msg || '获取作业列表失败');
+  return Array.isArray(data.data) ? data.data : [];
+}
+
+async function apiGetDayStats(token, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/homeworkprod/student/homework/task/getStudentHomeworkDaySubjectStat';
+  var body = { schoolId: state.schoolId, homeworkId: homeworkId, mustLearnSubjectList: [1,2,3,4,5,6,7,8,9,10,11,12] };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token), body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (!data.success) throw new Error('获取日期列表失败');
+  return data.data.dateStat || [];
+}
+
+async function apiGetTasks(token, homeworkId, dayId, pageIndex, pageSize){
+  pageIndex = pageIndex || 1; pageSize = pageSize || 200;
+  var url = CONFIG.BASE_URL + '/api/homeworkprod/student/homework/task/pageHomeworkTasks';
+  var body = {
+    schoolId: state.schoolId, homeworkId: homeworkId,
+    mustLearnSubjectList: [1,2,3,4,5,6,7,8,9,10,11,12],
+    queryMustLearn: 1, pageIndex: pageIndex, pageSize: pageSize, dayId: dayId
+  };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token), body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (!data.success) throw new Error('获取任务列表失败');
+  return data.data;
+}
+
+async function loadHomeworkTasks(hwId){
+  if (state.hwTaskLoading[hwId]) return;
+  state.hwTaskLoading[hwId] = true;
+  try {
+    var dayStats = await apiGetDayStats(state.token, hwId);
+    var allTasks = [];
+    for (var i = 0; i < dayStats.length; i++){
+      var dayItem = dayStats[i];
+      var dayId = String(dayItem.dateId);
+      var page = 1;
+      while (true){
+        try {
+          var data = await apiGetTasks(state.token, hwId, dayId, page, 200);
+          var items = data.data || [];
+          for (var ii = 0; ii < items.length; ii++){
+            var item = items[ii];
+            allTasks.push({
+              hwId: hwId, dayId: dayId,
+              taskId: String(item.taskId || ''),
+              contentId: String(item.contentId || ''),
+              contentType: item.contentType,
+              title: item.title || '未命名任务',
+              percent: item.percent || 0,
+              status: item.status || 0,
+              raw: item
+            });
+          }
+          if (page >= data.totalPages) break;
+          page++;
+        } catch (e){ break; }
+        await sleep(100);
+      }
+    }
+    state.homeworkTasks[hwId] = allTasks;
+    return allTasks;
+  } finally {
+    state.hwTaskLoading[hwId] = false;
+  }
+}
+
+// ============================================================
+// 视频相关 API
+// ============================================================
+async function apiGetLessonDetail(token, homeworkId, lessonId, schoolId){
+  var url = CONFIG.BASE_URL + '/api/homeworkprod/player/getLessonDetailV2';
+  var body = { homeworkId: homeworkId, lessonId: lessonId, schoolId: schoolId };
+  var resp = await fetch(url, { method: 'POST', headers: getTokenHeaders(token), body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (!data.success) return null;
+  var d = data.data;
+  var playTimeStr = d.playTime || '0:00';
+  var minutes = parseInt(playTimeStr.split(':')[0]) || 0;
+  return { pointNum: minutes + 1, videoPlayTime: d.videoPlayTime || 0, contentType: d.contentType || 1, playTime: d.playTime || '0:00' };
+}
+
+async function apiGetTaskInfo(token, schoolId, homeworkId, lessonId, contentType){
+  var url = CONFIG.BASE_URL + '/api/homeworkprod/homework/student/getUserHomeworkLessonTaskInfo';
+  var body = { schoolId: schoolId, homeworkId: homeworkId, lessonId: lessonId, contentType: contentType };
+  var resp = await fetch(url, { method: 'POST', headers: getTokenHeaders(token), body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (!data.success) return null;
+  var d = data.data;
+  return { playTime: d.playTime || 0, percent: d.percent || 0, finishPlayTime: d.finishPlayTime || 0, finishPercent: d.finishPercent || 0, lessonTime: d.lessonTime || 0 };
+}
+
+async function apiGetPlayerConfig(token){
+  var url = CONFIG.BASE_URL + '/api/videoplayerprod/videoplayer/getPlayerGlobalConf?token=' + token;
+  var resp = await fetch(url, { method: 'GET', headers: { token: token, Host: 'gateway.ewt360.com' } });
+  var data = await resp.json();
+  if (!data.success) throw new Error('获取播放器配置失败');
+  return { secret: data.data.globalInfo.secret, sessionId: data.data.globalInfo.sessionId };
+}
+
+async function apiReportVideoPoint(token, homeworkId, lessonId){
+  var ts = Date.now();
+  var sign = md5(String(ts) + CONFIG.REPORT_KEY);
+  var body = { homeworkId: homeworkId, lessonId: lessonId, type: 1, platform: 2, seriousCheckResult: 2 };
+  await fetch(CONFIG.REPORT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'token': token, 'timestamp': String(ts), 'sign': sign },
+    body: JSON.stringify(body)
+  });
+}
+
+async function apiSubmitRound(token, sessionId, userId, schoolId, lessonId, bizcode, action, eventType, stayTime, mediaTime, pointTime, beginTime, pointNum, secret){
+  var timestampMs = Date.now();
+  var raw = 'action=' + action + '&duration=' + stayTime + '&mediaTime=' + mediaTime + '&mstid=' + token +
+    '&platform=2&signatureMethod=HMAC-SHA1&signatureVersion=1.0&timestamp=' + timestampMs + '&version=2022-08-02';
+  var signature = hmacSha1(secret, raw);
+  var url = 'https://bfe.ewt360.com/monitor/app/collect/batch?TrLessonId=' + lessonId +
+    '&TrVideoBizCode=' + bizcode + '&TrUuId=12341234&TrFallback=0&TrUserId=' + userId + '&token=' + token;
+  var body = {
+    CommonPackage: {
+      os: 'Android', appBrand: 'android', schoolProvinceCode: '320000', memberProvinceCode: '320000',
+      userid: String(userId), resolution: '1080*2306', platform: '2', appOnline: '1', osVersion: '10',
+      appDeviceModel: 'android', appDevId: '0f99d6c0-693e-3f13-abef-60f6af4d9218',
+      schoolId: String(schoolId), sdkVersion: '2.0.95-test-rc21', appCarrier: 'N/A',
+      appAccess: 'NETWORK_MOBILE', mstid: token, appLanguage: 'zh'
+    },
+    EventPackage: [{
+      log_id: '12341234-1234-1234-1234-123412341234', course_id: lessonId, appVersion: '11.11.11',
+      point_time: pointTime, point_time_id: 0, begin_time: beginTime, lesson_id: lessonId, speed: 2.0,
+      appChannel: 'android', isonline: '1', quality: '高清', video_type: 1, point_num: pointNum,
+      event_type: eventType, report_time: timestampMs, media_time: mediaTime, action: action,
+      stay_time: stayTime, video_bizcode: bizcode, status: 1
+    }],
+    signature: signature, sn: 'moses_ewt_video_detail_2026', '_': timestampMs
+  };
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'token': token, 'x-bfe-session-id': sessionId, 'Content-Type': 'application/json; charset=UTF-8', 'Host': 'bfe.ewt360.com' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function videoProcessTask(hwId, lessonId){
+  var token = state.token, schoolId = state.schoolId, userId = state.userId;
+  var secret = state.videoSecret, sessionId = state.videoSessionId;
+  try {
+    var detail = await apiGetLessonDetail(token, hwId, lessonId, schoolId);
+    if (!detail){ addLog(vdom.logArea, '⚠️ 跳过: 无法获取课程详情 ' + lessonId.slice(0,12), 'warn'); return false; }
+    var pointNum = detail.pointNum, contentType = detail.contentType;
+    var task = await apiGetTaskInfo(token, schoolId, hwId, lessonId, contentType);
+    if (!task){ addLog(vdom.logArea, '⚠️ 跳过: 无法获取进度 ' + lessonId.slice(0,12), 'warn'); return false; }
+    var currentPlay = task.playTime, finishNeed = task.finishPlayTime;
+    vdom.currentLessonId.textContent = lessonId.slice(0, 12) + '...';
+    if (currentPlay >= finishNeed){
+      addLog(vdom.logArea, '✅ 已完成: ' + lessonId.slice(0,12) + '...', 'success');
+      await apiReportVideoPoint(token, hwId, lessonId);
+      return true;
+    }
+    addLog(vdom.logArea, '📖 开始: ' + lessonId.slice(0,12) + '... (' + Math.round(task.percent * 100) + '%)', 'info');
+    var HEARTBEAT = 120000, INTERVAL = 30000;
+    var remainingMs = finishNeed - currentPlay;
+    var neededRounds = Math.ceil(remainingMs / HEARTBEAT);
+    var beginTime = Date.now();
+    var lastPlay = currentPlay;
+    for (var i = 0; i < neededRounds; i++){
+      if (state.videoShouldStop || state.videoIsPaused){ addLog(vdom.logArea, '⏸️ 中断: ' + lessonId.slice(0,12), 'warn'); return false; }
+      var isFirst = (i === 0), isLast = (i === neededRounds - 1);
+      var action, eventType;
+      if (isFirst && isLast){ action = 4; eventType = 'video_oper'; }
+      else if (isFirst){ action = 2; eventType = 'video_oper'; }
+      else if (isLast){ action = 4; eventType = 'video'; }
+      else { action = 1; eventType = 'video'; }
+      await apiSubmitRound(token, sessionId, userId, schoolId, lessonId, CONFIG.BIZCODE, action, eventType, HEARTBEAT, HEARTBEAT, HEARTBEAT, beginTime, pointNum, secret);
+      var pctDone = Math.min(100, Math.round(((i + 1) / neededRounds) * 100));
+      updateVideoPhase('study', pctDone, '');
+      if (isLast) await apiReportVideoPoint(token, hwId, lessonId);
+      await sleep(1200);
+      var newTask = await apiGetTaskInfo(token, schoolId, hwId, lessonId, contentType);
+      if (newTask){
+        if (newTask.playTime > lastPlay){
+          addLog(vdom.logArea, '📈 +' + Math.round((newTask.playTime - lastPlay) / 1000) + 's → ' + Math.round(newTask.percent * 100) + '%', 'info');
+        }
+        lastPlay = newTask.playTime;
+        if (newTask.playTime >= finishNeed){
+          addLog(vdom.logArea, '✅ 达标: ' + lessonId.slice(0,12) + '...', 'success');
+          await apiReportVideoPoint(token, hwId, lessonId);
+          return true;
+        }
+      }
+      if (!isLast && lastPlay < finishNeed) await sleep(INTERVAL + Math.floor(Math.random() * 400) - 200);
+    }
+    var finalTask = await apiGetTaskInfo(token, schoolId, hwId, lessonId, contentType);
+    if (finalTask && finalTask.playTime >= finishNeed){
+      addLog(vdom.logArea, '✅ 达标: ' + lessonId.slice(0,12) + '...', 'success');
+      await apiReportVideoPoint(token, hwId, lessonId);
+      return true;
+    }
+    return false;
+  } catch (e){
+    addLog(vdom.logArea, '❌ 处理异常 ' + lessonId.slice(0,12) + '...: ' + e.message, 'error');
+    return false;
+  }
+}
+
+// ============================================================
+// 课后习题 API
+// ============================================================
+async function hwQueryStudyTests(token, homeworkId, videoTasks){
+  if (!videoTasks.length) return [];
+  var allPapers = [];
+  var BATCH = CONFIG.BATCH_SIZE;
+  for (var i = 0; i < videoTasks.length; i += BATCH){
+    var batch = videoTasks.slice(i, i + BATCH);
+    var taskIds = batch.map(function(v){ return v.task_id; });
+    var lessonIds = batch.map(function(v){ return v.lesson_id; });
+    var url = CONFIG.BASE_URL + '/api/homeworkprod/student/homework/task/queryStudentLessonStudyGuideAndPractice';
+    var body = { schoolId: parseInt(state.schoolId), homeworkId: parseInt(homeworkId), taskIds: taskIds, lessonIdList: lessonIds };
+    var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+    var data = await resp.json();
+    if (data.success){
+      for (var di = 0; di < data.data.length; di++){
+        var item = data.data[di];
+        var lessonId = String(item.lessonId);
+        var studyTest = item.studyTest;
+        if (studyTest && studyTest.paperId){
+          for (var bi = 0; bi < batch.length; bi++){
+            if (batch[bi].lesson_id === lessonId){
+              allPapers.push({ paper_id: studyTest.paperId, report_id: studyTest.reportId || null, finish_status: studyTest.finishStatus || 0, title: batch[bi].title, task_id: batch[bi].task_id, lesson_id: lessonId });
+              break;
+            }
+          }
+        }
+      }
+    }
+    await sleep(300);
+  }
+  return allPapers;
+}
+
+async function hwCreateReport2(token, paperId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/report?paperId=' + paperId + '&platform=1&bizCode=' + CONFIG.HOMEWORK_BIZ_CODE + '&token=' + token;
+  var resp = await fetch(url, { method: 'GET', headers: { 'User-Agent': CONFIG.UA } });
+  var data = await resp.json();
+  if (!data.success) throw new Error('创建报告失败');
+  return String(data.data.reportId);
+}
+
+async function hwFinishReport(token, paperId, reportId, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/submitpaper';
+  var body = { paperId: paperId, reportId: reportId, bizCode: CONFIG.HOMEWORK_BIZ_CODE, platform: '1', totalSeconds: 60, homeworkId: homeworkId };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+  var data = await resp.json();
+  return data.success || false;
+}
+
+async function hwGetQuestions(token, paperId, reportId, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/common/answer/sheet/getAnswerSheetSubGroup';
+  var body = { paperId: paperId, reportId: reportId, platform: '1', bizCode: CONFIG.HOMEWORK_BIZ_CODE, homeworkId: homeworkId, client: 4 };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (!data.success) throw new Error('获取题目失败');
+  var questions = [];
+  var groups = data.data.groupQuestionList || [];
+  for (var gi = 0; gi < groups.length; gi++){
+    var qlist = groups[gi].questionList || [];
+    for (var qi = 0; qi < qlist.length; qi++){
+      var q = qlist[qi];
+      if (q.subQuestionList && q.subQuestionList.length){
+        for (var ci = 0; ci < q.subQuestionList.length; ci++){
+          var child = q.subQuestionList[ci];
+          questions.push({ questionId: String(child.questionId), questionNumber: child.questionNumber || '', hasOption: !!(child.optionsList && child.optionsList.length) });
+        }
+      } else {
+        questions.push({ questionId: String(q.questionId), questionNumber: q.questionNumber || '', hasOption: !!(q.optionsList && q.optionsList.length) });
+      }
+    }
+  }
+  return questions;
+}
+
+function extractOpts(rightAnswer){
+  if (!rightAnswer) return [];
+  if (typeof rightAnswer === 'string') rightAnswer = [rightAnswer];
+  var result = [];
+  for (var i = 0; i < rightAnswer.length; i++){
+    var t = String(rightAnswer[i]).trim();
+    if (/^[A-Z]+$/.test(t)) result.push(t);
+  }
+  return result;
+}
+
+async function hwGetAnswerForQuestion(token, paperId, reportId, questionId, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/simple/question/analysis';
+  var body = { paperId: paperId, reportId: reportId, platform: '1', questionId: questionId, bizCode: CONFIG.HOMEWORK_BIZ_CODE, homeworkId: homeworkId, client: 4 };
+  try {
+    var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+    var data = await resp.json();
+    if (!data.success) return null;
+    var rightAnswers = [];
+    var childs = data.data.childQuestions || [];
+    if (childs.length){
+      for (var ci = 0; ci < childs.length; ci++){
+        var opts = extractOpts(childs[ci].rightAnswer);
+        if (opts.length) rightAnswers.push.apply(rightAnswers, opts);
+      }
+    } else {
+      var opts2 = extractOpts(data.data.rightAnswer);
+      if (opts2.length) rightAnswers.push.apply(rightAnswers, opts2);
+    }
+    return rightAnswers.length ? rightAnswers : null;
+  } catch (e){ return null; }
+}
+
+async function hwSubmitAnswers(token, paperId, reportId, questions, answersMap, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/submitAnswer';
+  var questionList = [];
+  for (var qi = 0; qi < questions.length; qi++){
+    var q = questions[qi];
+    if (answersMap[q.questionId] && q.hasOption){
+      var flat = [];
+      answersMap[q.questionId].forEach(function(a){ a.split('').forEach(function(c){ flat.push(c); }); });
+      questionList.push({ id: q.questionId, myAnswers: flat, questionNo: parseInt(q.questionNumber) || 0, questionNumber: q.questionNumber, totalSeconds: Math.floor(Math.random() * 3) + 1, cateId: 1 });
+    }
+  }
+  if (!questionList.length) return false;
+  var body = { paperId: paperId, reportId: reportId, platform: '1', questionList: questionList, bizCode: CONFIG.HOMEWORK_BIZ_CODE, assignPoints: false, homeworkId: homeworkId };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+  var data = await resp.json();
+  return data.success || false;
+}
+
+async function homeworkProcessSinglePaper(hwId, paper){
+  var token = state.token, paperId = paper.paper_id;
+  try {
+    addLog(hdom.logArea, '📄 处理: ' + (paper.title || '未命名'), 'info');
+    hdom.currentPaper.textContent = (paper.title || '未命名').slice(0, 16) + '...';
+    var ridSource = await hwCreateReport2(token, paperId);
+    await hwFinishReport(token, paperId, ridSource, hwId);
+    var questions = await hwGetQuestions(token, paperId, ridSource, hwId);
+    addLog(hdom.logArea, '  共 ' + questions.length + ' 题', 'info');
+    var answersMap = {}, answerCount = 0;
+    for (var qi = 0; qi < questions.length; qi++){
+      var q = questions[qi];
+      if (q.hasOption){
+        var ans = await hwGetAnswerForQuestion(token, paperId, ridSource, q.questionId, hwId);
+        if (ans){ answersMap[q.questionId] = ans; answerCount++; }
+        await sleep(150);
+      }
+    }
+    addLog(hdom.logArea, '  提取到 ' + answerCount + ' 题答案', 'info');
+    if (!answerCount){ addLog(hdom.logArea, '  无答案可提取，跳过', 'warn'); return false; }
+    var ridTarget = await hwCreateReport2(token, paperId);
+    var ok = await hwSubmitAnswers(token, paperId, ridTarget, questions, answersMap, hwId);
+    if (ok){
+      await sleep(800);
+      var done = await hwFinishReport(token, paperId, ridTarget, hwId);
+      addLog(hdom.logArea, '  提交完成: ' + (done ? '成功' : '失败'), done ? 'success' : 'error');
+      return done;
+    }
+    return false;
+  } catch (e){
+    addLog(hdom.logArea, '  ❌ 处理异常: ' + e.message, 'error');
+    return false;
+  }
+}
+
+// ============================================================
+// 试卷 API
+// ============================================================
+async function paperCreateReport(token, paperId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/report?paperId=' + paperId + '&platform=1&bizCode=' + CONFIG.PAPER_BIZ_CODE + '&token=' + token;
+  var resp = await fetch(url, { method: 'GET', headers: { 'User-Agent': CONFIG.UA } });
+  var data = await resp.json();
+  if (!data.success) throw new Error('创建答卷失败');
+  return String(data.data.reportId);
+}
+
+async function paperFinishReport(token, paperId, reportId, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/submitpaper';
+  var body = { paperId: paperId, reportId: reportId, bizCode: CONFIG.PAPER_BIZ_CODE, platform: '1', totalSeconds: 60 + Math.floor(Math.random() * 120), homeworkId: homeworkId };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+  var data = await resp.json();
+  return data.success || false;
+}
+
+async function paperGetQuestions(token, paperId, reportId, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/common/answer/sheet/getAnswerSheetSubGroup';
+  var body = { paperId: paperId, reportId: reportId, platform: '1', bizCode: CONFIG.PAPER_BIZ_CODE, homeworkId: homeworkId, client: 4 };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+  var data = await resp.json();
+  if (!data.success) throw new Error('获取题目失败');
+  var groups = data.data.groupQuestionList || [];
+  var questions = [];
+  for (var gi = 0; gi < groups.length; gi++){
+    var qlist = groups[gi].questionList || [];
+    for (var qi = 0; qi < qlist.length; qi++){
+      var q = qlist[qi];
+      if (q.subQuestionList && q.subQuestionList.length){
+        for (var ci = 0; ci < q.subQuestionList.length; ci++){
+          var child = q.subQuestionList[ci];
+          questions.push({ questionId: String(child.questionId), questionNumber: child.questionNumber || '', hasOption: !!(child.optionsList && child.optionsList.length), cateId: child.cateId || 1, parentId: String(q.questionId) });
+        }
+      } else {
+        questions.push({ questionId: String(q.questionId), questionNumber: q.questionNumber || '', hasOption: !!(q.optionsList && q.optionsList.length), cateId: q.cateId || 1, parentId: String(q.questionId) });
+      }
+    }
+  }
+  return { questions: questions, rawGroups: groups };
+}
+
+async function paperGetChoiceAnswers(token, paperId, reportId, rawGroups, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/simple/question/analysis';
+  var answersMap = {};
+  for (var gi = 0; gi < rawGroups.length; gi++){
+    var qlist = rawGroups[gi].questionList || [];
+    for (var qi = 0; qi < qlist.length; qi++){
+      var parentId = String(qlist[qi].questionId);
+      try {
+        var body = { paperId: paperId, reportId: reportId, platform: '1', questionId: parentId, bizCode: CONFIG.PAPER_BIZ_CODE, homeworkId: homeworkId, client: 4 };
+        var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+        var data = await resp.json();
+        if (!data.success) continue;
+        var childs = data.data.childQuestions || [];
+        if (childs.length){
+          for (var ci = 0; ci < childs.length; ci++){
+            var cid = String(childs[ci].questionId);
+            var opts = extractOpts(childs[ci].rightAnswer);
+            if (opts.length) answersMap[cid] = opts;
+          }
+        } else {
+          var opts2 = extractOpts(data.data.rightAnswer);
+          if (opts2.length) answersMap[String(data.data.questionId)] = opts2;
+        }
+      } catch (e){}
+      await sleep(120);
+    }
+  }
+  return answersMap;
+}
+
+async function paperSubmitChoices(token, paperId, reportId, questions, answersMap, homeworkId){
+  var url = CONFIG.BASE_URL + '/api/answerprod/web/answer/submitAnswer';
+  var batch = [];
+  for (var qi = 0; qi < questions.length; qi++){
+    var q = questions[qi];
+    if (answersMap[q.questionId] && q.hasOption){
+      var flat = [];
+      answersMap[q.questionId].forEach(function(a){ a.split('').forEach(function(c){ flat.push(c); }); });
+      batch.push({ id: q.questionId, myAnswers: flat, questionNo: parseInt(q.questionNumber) || 0, questionNumber: q.questionNumber, totalSeconds: Math.floor(Math.random() * 3) + 1, cateId: q.cateId || 1 });
+    }
+  }
+  if (!batch.length) return false;
+  var body = { paperId: paperId, reportId: reportId, platform: '1', questionList: batch, bizCode: CONFIG.PAPER_BIZ_CODE, assignPoints: false, homeworkId: homeworkId };
+  var resp = await fetch(url, { method: 'POST', headers: getHeaders(token, { token: token }), body: JSON.stringify(body) });
+  var data = await resp.json();
+  return data.success || false;
+}
+
+async function paperProcessSingleTask(hwId, paperId, title){
+  var token = state.token;
+  try {
+    addLog(pdom.logArea, '📄 处理: ' + (title || '未命名试卷'), 'info');
+    pdom.currentPaper.textContent = (title || '未命名').slice(0, 16) + '...';
+    var ridSource = await paperCreateReport(token, paperId);
+    var qResult = await paperGetQuestions(token, paperId, ridSource, hwId);
+    var questions = qResult.questions, rawGroups = qResult.rawGroups;
+    var choiceCount = 0, subjCount = 0;
+    questions.forEach(function(q){ if (q.hasOption) choiceCount++; else subjCount++; });
+    addLog(pdom.logArea, '  题目: ' + questions.length + ' (选择 ' + choiceCount + ', 主观 ' + subjCount + ')', 'info');
+    await paperFinishReport(token, paperId, ridSource, hwId);
+    await sleep(1000);
+    var answersMap = await paperGetChoiceAnswers(token, paperId, ridSource, rawGroups, hwId);
+    var answerCount = Object.keys(answersMap).length;
+    addLog(pdom.logArea, '  提取到 ' + answerCount + ' 道选择题答案', 'info');
+    var ridTarget = await paperCreateReport(token, paperId);
+    await sleep(600);
+    if (answerCount > 0){
+      var ok = await paperSubmitChoices(token, paperId, ridTarget, questions, answersMap, hwId);
+      addLog(pdom.logArea, '  选择题提交: ' + (ok ? '✅' : '❌'), ok ? 'success' : 'error');
+    }
+    await sleep(800);
+    var done = await paperFinishReport(token, paperId, ridTarget, hwId);
+    addLog(pdom.logArea, '  整卷提交: ' + (done ? '✅' : '❌'), done ? 'success' : 'error');
+    return done;
+  } catch (e){
+    addLog(pdom.logArea, '  ❌ 异常: ' + e.message, 'error');
+    return false;
+  }
+}
+
+// ============================================================
+// 任务选择工具
+// ============================================================
+function taskKey(hwId, taskId){ return hwId + '::' + taskId; }
+
+function getSelectedTasks(){
+  var result = [];
+  Object.keys(state.homeworkTasks).forEach(function(hwId){
+    var tasks = state.homeworkTasks[hwId] || [];
+    tasks.forEach(function(t){
+      if (state.selectedTaskKeys.has(taskKey(hwId, t.taskId))){
+        result.push(t);
+      }
+    });
+  });
+  return result;
+}
+
+function getSelectedTasksByType(contentType){
+  return getSelectedTasks().filter(function(t){ return t.contentType === contentType; });
+}
+
+function updateSelectedCount(){
+  var allTasks = 0;
+  Object.keys(state.homeworkTasks).forEach(function(hwId){
+    allTasks += (state.homeworkTasks[hwId] || []).length;
+  });
+  dom.selectedCount.textContent = '（已选 ' + state.selectedTaskKeys.size + ' / ' + allTasks + ' 个任务）';
+  var hasTasks = state.selectedTaskKeys.size > 0;
+  var hasVideo = getSelectedTasksByType(1).length > 0;
+  var hasPaper = getSelectedTasksByType(2).length > 0;
+  vdom.startBtn.disabled = !state.isLoggedIn || !hasVideo;
+  pdom.startBtn.disabled = !state.isLoggedIn || !hasPaper;
+  hdom.startBtn.disabled = !state.isLoggedIn || !hasTasks;
+}
+
+// ============================================================
+// 渲染作业卡片
+// ============================================================
+function renderHomeworkCards(){
+  var container = dom.homeworkCards;
+  container.innerHTML = '';
+  if (!state.homeworkList.length){
+    container.innerHTML = '<div class="hw-empty">📭 当前账号暂无作业</div>';
+    updateSelectedCount();
+    return;
+  }
+  state.homeworkList.forEach(function(hw){
+    var hwId = String(hw.homeworkId);
+    var subject = (hw.subjects || []).map(function(s){ return s.text; }).join('/') || '未知';
+    var isExpanded = state.expandedHwIds.has(hwId);
+    var card = document.createElement('div');
+    card.className = 'hw-card' + (isExpanded ? ' expanded' : '');
+    card.dataset.hwid = hwId;
+
+    var tasks = state.homeworkTasks[hwId] || [];
+    var selectedInThisHw = 0;
+    tasks.forEach(function(t){ if (state.selectedTaskKeys.has(taskKey(hwId, t.taskId))) selectedInThisHw++; });
+
+    card.innerHTML =
+      '<div class="hw-card-header">' +
+        '<span class="hw-card-icon">📁</span>' +
+        '<span class="hw-card-title">' + escapeHtml(hw.title || '未命名作业') + '</span>' +
+        '<span class="hw-card-meta">' +
+          '<span class="badge">' + escapeHtml(subject) + '</span>' +
+          (tasks.length ? '<span class="task-count-badge">' + selectedInThisHw + '/' + tasks.length + '</span>' : '') +
+        '</span>' +
+        '<span class="hw-card-arrow">▶</span>' +
+      '</div>' +
+      '<div class="hw-card-body"><div class="hw-card-body-inner" data-body="' + hwId + '"></div></div>';
+
+    container.appendChild(card);
+
+    card.querySelector('.hw-card-header').addEventListener('click', function(){
+      toggleHomework(hwId);
+    });
+
+    if (isExpanded){
+      var bodyEl = card.querySelector('[data-body="' + hwId + '"]');
+      renderTaskList(bodyEl, hwId);
+    }
+  });
+  updateSelectedCount();
+}
+
+async function toggleHomework(hwId){
+  if (state.expandedHwIds.has(hwId)){
+    state.expandedHwIds.delete(hwId);
+    renderHomeworkCards();
+    return;
+  }
+  state.expandedHwIds.add(hwId);
+  renderHomeworkCards();
+  var bodyEl = document.querySelector('[data-body="' + hwId + '"]');
+  if (!bodyEl) return;
+  if (!state.homeworkTasks[hwId]){
+    bodyEl.innerHTML = '<div class="hw-loading">⏳ 正在加载任务...</div>';
+    try {
+      await loadHomeworkTasks(hwId);
+    } catch (e){
+      bodyEl.innerHTML = '<div class="hw-empty">❌ 加载失败: ' + escapeHtml(e.message) + '</div>';
+      return;
+    }
+  }
+  renderTaskList(bodyEl, hwId);
+  renderHomeworkCards();
+}
+
+function renderTaskList(bodyEl, hwId){
+  if (!bodyEl) return;
+  var tasks = state.homeworkTasks[hwId] || [];
+  if (!tasks.length){
+    bodyEl.innerHTML = '<div class="hw-empty">📭 该作业暂无任务</div>';
+    return;
+  }
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.72rem;color:var(--text-secondary);">' +
+    '<span>共 ' + tasks.length + ' 个任务</span>' +
+    '<span><button class="hw-mini-btn" data-hw-select="' + hwId + '" style="margin-right:4px;">全选</button>' +
+    '<button class="hw-mini-btn" data-hw-clear="' + hwId + '">清空</button></span>' +
+    '</div>';
+  html += '<div class="task-list">';
+  tasks.forEach(function(t){
+    var key = taskKey(hwId, t.taskId);
+    var checked = state.selectedTaskKeys.has(key);
+    var typeName = t.contentType === 1 ? '视频' : (t.contentType === 2 ? '试卷' : ('类型' + t.contentType));
+    var doneTag = (t.percent >= 100) ? '<span class="done-tag">✓ 已完成</span>' : '';
+    html +=
+      '<label class="task-item' + (checked ? ' checked' : '') + '">' +
+        '<input type="checkbox" data-task="' + escapeHtml(key) + '"' + (checked ? ' checked' : '') + '>' +
+        '<div class="task-main">' +
+          '<span class="task-title">' + escapeHtml(t.title) + '</span>' +
+          '<span class="task-meta">' +
+            '<span class="type-tag">' + typeName + '</span>' +
+            doneTag +
+          '</span>' +
+        '</div>' +
+      '</label>';
+  });
+  html += '</div>';
+  bodyEl.innerHTML = html;
+
+  bodyEl.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', function(){
+      var key = this.dataset.task;
+      if (this.checked) state.selectedTaskKeys.add(key);
+      else state.selectedTaskKeys.delete(key);
+      this.parentElement.classList.toggle('checked', this.checked);
+      updateSelectedCount();
+      var card = this.closest('.hw-card');
+      if (card){
+        var hwId2 = card.dataset.hwid;
+        updateHwCardCount(card, hwId2);
+      }
+    });
+  });
+  bodyEl.querySelector('[data-hw-select]').addEventListener('click', function(e){
+    e.stopPropagation();
+    var hwId2 = this.dataset.hwSelect;
+    (state.homeworkTasks[hwId2] || []).forEach(function(t){
+      state.selectedTaskKeys.add(taskKey(hwId2, t.taskId));
+    });
+    renderTaskList(bodyEl, hwId2);
+    updateSelectedCount();
+    var card = document.querySelector('.hw-card[data-hwid="' + hwId2 + '"]');
+    if (card) updateHwCardCount(card, hwId2);
+  });
+  bodyEl.querySelector('[data-hw-clear]').addEventListener('click', function(e){
+    e.stopPropagation();
+    var hwId2 = this.dataset.hwClear;
+    (state.homeworkTasks[hwId2] || []).forEach(function(t){
+      state.selectedTaskKeys.delete(taskKey(hwId2, t.taskId));
+    });
+    renderTaskList(bodyEl, hwId2);
+    updateSelectedCount();
+    var card = document.querySelector('.hw-card[data-hwid="' + hwId2 + '"]');
+    if (card) updateHwCardCount(card, hwId2);
+  });
+}
+
+function updateHwCardCount(card, hwId){
+  var tasks = state.homeworkTasks[hwId] || [];
+  var selected = 0;
+  tasks.forEach(function(t){ if (state.selectedTaskKeys.has(taskKey(hwId, t.taskId))) selected++; });
+  var meta = card.querySelector('.hw-card-meta');
+  if (meta){
+    var oldCount = meta.querySelector('.task-count-badge');
+    if (oldCount) oldCount.remove();
+    if (tasks.length){
+      var span = document.createElement('span');
+      span.className = 'task-count-badge';
+      span.textContent = selected + '/' + tasks.length;
+      meta.appendChild(span);
+    }
+  }
+}
+
+// ============================================================
+// 视频刷课
+// ============================================================
+async function videoStartStudy(){
+  if (state.videoIsRunning) return;
+  if (!state.token){ showToast('请先登录', 'warn'); return; }
+  var tasks = getSelectedTasksByType(1);
+  if (!tasks.length){ showToast('请先展开作业并勾选视频任务', 'warn'); return; }
+
+  state.videoIsRunning = true; state.videoShouldStop = false; state.videoIsPaused = false;
+  vdom.startBtn.disabled = true; vdom.pauseBtn.disabled = false; vdom.stopBtn.disabled = false;
+  vdom.startBtn.textContent = '⏳ 运行中...';
+
+  try {
+    try {
+      var config = await apiGetPlayerConfig(state.token);
+      state.videoSecret = config.secret; state.videoSessionId = config.sessionId;
+      updateVideoPhase('login', 100, '');
+      addLog(vdom.logArea, '✅ 播放器配置已加载', 'success');
+    } catch (e){
+      addLog(vdom.logArea, '❌ 播放器配置失败: ' + e.message, 'error'); videoStopCleanup(); return;
+    }
+
+    state.videoTotal = tasks.length; state.videoCompleted = 0;
+    videoUpdateTotalProgress();
+    updateVideoPhase('fetch', 100, '');
+    updateVideoPhase('study', 0, '');
+
+    addLog(vdom.logArea, '🚀 共 ' + tasks.length + ' 个视频任务待处理', 'info');
+
+    for (var i = 0; i < tasks.length; i++){
+      if (state.videoShouldStop) break;
+      while (state.videoIsPaused){ await sleep(500); if (state.videoShouldStop) break; }
+      if (state.videoShouldStop) break;
+      var t = tasks[i];
+      addLog(vdom.logArea, '🎯 [' + (i + 1) + '/' + tasks.length + '] ' + t.title, 'info');
+      var ok = await videoProcessTask(t.hwId, t.contentId);
+      if (ok) state.videoCompleted++;
+      var studyPct = Math.min(100, Math.round(((i + 1) / tasks.length) * 100));
+      updateVideoPhase('study', studyPct, '');
+      videoUpdateTotalProgress();
+      if (i < tasks.length - 1 && !state.videoShouldStop) await sleep(1500 + Math.random() * 1000);
+    }
+    updateVideoPhase('done', 100, '');
+
+    addLog(vdom.logArea, '🎉 完成！成功 ' + state.videoCompleted + ' / ' + state.videoTotal, 'success');
+    showToast('✅ 视频处理完成，成功 ' + state.videoCompleted + '/' + state.videoTotal, 'success');
+  } finally { videoStopCleanup(); }
+}
+
+function videoStopCleanup(){
+  state.videoIsRunning = false;
+  vdom.startBtn.disabled = false;
+  vdom.startBtn.textContent = '▶ 开始刷选中的视频';
+  vdom.pauseBtn.disabled = true; vdom.stopBtn.disabled = true;
+  vdom.pauseBtn.textContent = '⏸ 暂停';
+  setStatus('online', '就绪');
+  updateSelectedCount();
+}
+
+function updateVideoPhase(name, pct, status){
+  var map = { 'login': { el: vdom.phaseLogin, icon: vdom.phaseLoginIcon },
+    'fetch': { el: vdom.phaseFetch, icon: vdom.phaseFetchIcon },
+    'study': { el: vdom.phaseStudy, icon: vdom.phaseStudyIcon },
+    'done': { el: vdom.phaseDone, icon: vdom.phaseDoneIcon } };
+  var item = map[name]; if (!item) return;
+  var fill = item.el, icon = item.icon;
+  fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+  fill.className = 'fill'; icon.className = 'status-icon';
+  if (pct >= 100){ fill.classList.add('done'); icon.textContent = '●'; icon.classList.add('done'); }
+  else if (pct > 0){ fill.classList.add('active'); icon.textContent = '◉'; icon.classList.add('active'); }
+  else { icon.textContent = '○'; }
+  if (status === 'error'){ icon.textContent = '✕'; icon.className = 'status-icon error'; }
+}
+
+function videoUpdateTotalProgress(){
+  var total = state.videoTotal || 0, done = state.videoCompleted || 0;
+  var pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  vdom.totalPctLabel.textContent = pct + '%';
+  var fill = vdom.totalProgressFill;
+  fill.style.width = pct + '%';
+  if (pct === 100 && total > 0) fill.classList.add('done'); else fill.classList.remove('done');
+  vdom.taskCounter.textContent = done + '/' + total;
+}
+
+// ============================================================
+// 课后习题
+// ============================================================
+async function homeworkStartStudy(){
+  if (state.hwIsRunning) return;
+  if (!state.token){ showToast('请先登录', 'warn'); return; }
+  var tasks = getSelectedTasks();
+  if (!tasks.length){ showToast('请先展开作业并勾选任务', 'warn'); return; }
+
+  var grouped = {};
+  tasks.forEach(function(t){
+    if (!grouped[t.hwId]) grouped[t.hwId] = [];
+    grouped[t.hwId].push(t);
+  });
+
+  state.hwIsRunning = true; state.hwShouldStop = false; state.hwIsPaused = false;
+  hdom.startBtn.disabled = true; hdom.pauseBtn.disabled = false; hdom.stopBtn.disabled = false;
+  hdom.startBtn.textContent = '⏳ 运行中...';
+
+  try {
+    updateHomeworkPhase('login', 100, '');
+    updateHomeworkPhase('fetch', 0, '');
+
+    var allPapers = [];
+    var hwIds = Object.keys(grouped);
+    for (var i = 0; i < hwIds.length; i++){
+      if (state.hwShouldStop) break;
+      var hwId = hwIds[i];
+      var videoTasks = grouped[hwId].filter(function(t){ return t.contentType === 1; })
+        .map(function(t){ return { task_id: t.taskId, lesson_id: t.contentId, title: t.title }; });
+      if (!videoTasks.length) continue;
+      try {
+        var papers = await hwQueryStudyTests(state.token, hwId, videoTasks);
+        papers.forEach(function(p){ p.hwId = hwId; });
+        allPapers.push.apply(allPapers, papers);
+      } catch (e){}
+      var pct = Math.min(100, Math.round(((i + 1) / hwIds.length) * 100));
+      updateHomeworkPhase('fetch', pct, '');
+    }
+
+    var unfinished = allPapers.filter(function(p){ return p.finish_status !== 1; });
+    addLog(hdom.logArea, '📝 共 ' + allPapers.length + ' 份习题，未完成 ' + unfinished.length + ' 份', 'info');
+    if (!unfinished.length){ addLog(hdom.logArea, '🎉 全部已完成', 'success'); hwStopCleanup(); return; }
+
+    state.hwTotal = unfinished.length; state.hwCompleted = 0;
+    homeworkUpdateTotalProgress();
+    updateHomeworkPhase('submit', 0, '');
+
+    for (var j = 0; j < unfinished.length; j++){
+      if (state.hwShouldStop) break;
+      while (state.hwIsPaused){ await sleep(500); if (state.hwShouldStop) break; }
+      if (state.hwShouldStop) break;
+      var paper = unfinished[j];
+      addLog(hdom.logArea, '🎯 [' + (j + 1) + '/' + unfinished.length + '] ' + (paper.title || '习题'), 'info');
+      var ok = await homeworkProcessSinglePaper(paper.hwId, paper);
+      if (ok) state.hwCompleted++;
+      var pct2 = Math.min(100, Math.round(((j + 1) / unfinished.length) * 100));
+      updateHomeworkPhase('submit', pct2, '');
+      homeworkUpdateTotalProgress();
+      if (j < unfinished.length - 1 && !state.hwShouldStop) await sleep(1500 + Math.random() * 1000);
+    }
+    updateHomeworkPhase('done', 100, '');
+
+    addLog(hdom.logArea, '🎉 完成！成功 ' + state.hwCompleted + ' / ' + state.hwTotal, 'success');
+    showToast('✅ 习题处理完成', 'success');
+  } finally { hwStopCleanup(); }
+}
+
+function hwStopCleanup(){
+  state.hwIsRunning = false;
+  hdom.startBtn.disabled = false;
+  hdom.startBtn.textContent = '▶ 开始刷选中的习题';
+  hdom.pauseBtn.disabled = true; hdom.stopBtn.disabled = true;
+  hdom.pauseBtn.textContent = '⏸ 暂停';
+  setStatus('online', '就绪');
+  updateSelectedCount();
+}
+
+function updateHomeworkPhase(name, pct, status){
+  var map = { 'login': { el: hdom.phaseLogin, icon: hdom.phaseLoginIcon },
+    'fetch': { el: hdom.phaseFetch, icon: hdom.phaseFetchIcon },
+    'submit': { el: hdom.phaseSubmit, icon: hdom.phaseSubmitIcon },
+    'done': { el: hdom.phaseDone, icon: hdom.phaseDoneIcon } };
+  var item = map[name]; if (!item) return;
+  var fill = item.el, icon = item.icon;
+  fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+  fill.className = 'fill'; icon.className = 'status-icon';
+  if (pct >= 100){ fill.classList.add('done'); icon.textContent = '●'; icon.classList.add('done'); }
+  else if (pct > 0){ fill.classList.add('active'); icon.textContent = '◉'; icon.classList.add('active'); }
+  else { icon.textContent = '○'; }
+  if (status === 'error'){ icon.textContent = '✕'; icon.className = 'status-icon error'; }
+}
+
+function homeworkUpdateTotalProgress(){
+  var total = state.hwTotal || 0, done = state.hwCompleted || 0;
+  var pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  hdom.totalPctLabel.textContent = pct + '%';
+  var fill = hdom.totalProgressFill;
+  fill.style.width = pct + '%';
+  if (pct === 100 && total > 0) fill.classList.add('done'); else fill.classList.remove('done');
+  hdom.taskCounter.textContent = done + '/' + total;
+}
+
+// ============================================================
+// 试卷刷题
+// ============================================================
+async function paperStartStudy(){
+  if (state.pIsRunning) return;
+  if (!state.token){ showToast('请先登录', 'warn'); return; }
+  var tasks = getSelectedTasksByType(2);
+  if (!tasks.length){ showToast('请先展开作业并勾选试卷任务', 'warn'); return; }
+
+  state.pIsRunning = true; state.pShouldStop = false; state.pIsPaused = false;
+  pdom.startBtn.disabled = true; pdom.pauseBtn.disabled = false; pdom.stopBtn.disabled = false;
+  pdom.startBtn.textContent = '⏳ 运行中...';
+
+  try {
+    updatePaperPhase('login', 100, '');
+    updatePaperPhase('fetch', 100, '');
+    updatePaperPhase('submit', 0, '');
+
+    state.pTotal = tasks.length; state.pCompleted = 0;
+    paperUpdateTotalProgress();
+    addLog(pdom.logArea, '🚀 共 ' + tasks.length + ' 份试卷待处理', 'info');
+
+    for (var i = 0; i < tasks.length; i++){
+      if (state.pShouldStop) break;
+      while (state.pIsPaused){ await sleep(500); if (state.pShouldStop) break; }
+      if (state.pShouldStop) break;
+      var t = tasks[i];
+      addLog(pdom.logArea, '🎯 [' + (i + 1) + '/' + tasks.length + '] ' + t.title, 'info');
+      var ok = await paperProcessSingleTask(t.hwId, t.contentId, t.title);
+      if (ok) state.pCompleted++;
+      var pct = Math.min(100, Math.round(((i + 1) / tasks.length) * 100));
+      updatePaperPhase('submit', pct, '');
+      paperUpdateTotalProgress();
+      if (i < tasks.length - 1 && !state.pShouldStop) await sleep(1500 + Math.random() * 1000);
+    }
+    updatePaperPhase('done', 100, '');
+
+    addLog(pdom.logArea, '🎉 完成！成功 ' + state.pCompleted + ' / ' + state.pTotal, 'success');
+    showToast('✅ 试卷处理完成，成功 ' + state.pCompleted + '/' + state.pTotal, 'success');
+  } finally { paperStopCleanup(); }
+}
+
+function paperStopCleanup(){
+  state.pIsRunning = false;
+  pdom.startBtn.disabled = false;
+  pdom.startBtn.textContent = '▶ 开始刷选中的试卷';
+  pdom.pauseBtn.disabled = true; pdom.stopBtn.disabled = true;
+  pdom.pauseBtn.textContent = '⏸ 暂停';
+  setStatus('online', '就绪');
+  updateSelectedCount();
+}
+
+function updatePaperPhase(name, pct, status){
+  var map = { 'login': { el: pdom.phaseLogin, icon: pdom.phaseLoginIcon },
+    'fetch': { el: pdom.phaseFetch, icon: pdom.phaseFetchIcon },
+    'submit': { el: pdom.phaseSubmit, icon: pdom.phaseSubmitIcon },
+    'done': { el: pdom.phaseDone, icon: pdom.phaseDoneIcon } };
+  var item = map[name]; if (!item) return;
+  var fill = item.el, icon = item.icon;
+  fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+  fill.className = 'fill'; icon.className = 'status-icon';
+  if (pct >= 100){ fill.classList.add('done'); icon.textContent = '●'; icon.classList.add('done'); }
+  else if (pct > 0){ fill.classList.add('active'); icon.textContent = '◉'; icon.classList.add('active'); }
+  else { icon.textContent = '○'; }
+  if (status === 'error'){ icon.textContent = '✕'; icon.className = 'status-icon error'; }
+}
+
+function paperUpdateTotalProgress(){
+  var total = state.pTotal || 0, done = state.pCompleted || 0;
+  var pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  pdom.totalPctLabel.textContent = pct + '%';
+  var fill = pdom.totalProgressFill;
+  fill.style.width = pct + '%';
+  if (pct === 100 && total > 0) fill.classList.add('done'); else fill.classList.remove('done');
+  pdom.taskCounter.textContent = done + '/' + total;
+}
+
+// ============================================================
+// 登录处理
+// ============================================================
+async function handleLogin(){
+  var username = $('#usernameInput').value.trim();
+  var password = $('#passwordInput').value.trim();
+  if (!username){ showToast('请输入账号', 'warn'); return; }
+  if (!password){ showToast('请输入密码', 'warn'); return; }
+  var btn = $('#loginBtn');
+  btn.disabled = true; btn.textContent = '⏳ 登录中...';
+  setStatus('busy', '登录中');
+  addLog(vdom.logArea, '🔐 登录: ' + username, 'info');
+
+  try {
+    var token = await apiLogin(username, password);
+    state.token = token; state.username = username; state.isLoggedIn = true;
+    var userInfo = await apiGetUserInfo(token);
+    state.userId = String(userInfo.userId);
+    state.schoolId = userInfo.schoolId;
+    $('#loginSuccess').style.display = 'block';
+    $('#userInfoDisplay').textContent = '用户: ' + username + ' | ID: ' + state.userId + ' | 学校: ' + state.schoolId;
+    $('#logoutBtn').style.display = 'block';
+    btn.textContent = '✅ 已登录'; btn.disabled = true;
+    updateVideoPhase('login', 100, '');
+    updateHomeworkPhase('login', 100, '');
+    updatePaperPhase('login', 100, '');
+    addLog(vdom.logArea, '✅ 登录成功, ID: ' + state.userId, 'success');
+    showToast('登录成功 ✅', 'success');
+    setStatus('online', '已登录');
+
+    try {
+      var config = await apiGetPlayerConfig(token);
+      state.videoSecret = config.secret; state.videoSessionId = config.sessionId;
+    } catch (e){ addLog(vdom.logArea, '⚠️ 播放器配置失败: ' + e.message, 'warn'); }
+
+    await loadHomeworkList();
+  } catch (e){
+    addLog(vdom.logArea, '❌ 登录失败: ' + e.message, 'error');
+    showToast('登录失败: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = '🚀 登录';
+    setStatus('offline', '登录失败');
+  }
+}
+
+async function loadHomeworkList(){
+  dom.homeworkCards.innerHTML = '<div class="hw-login-hint">⏳ 正在加载作业列表...</div>';
+  try {
+    var list = await apiGetHomeworkList();
+    state.homeworkList = list;
+    state.homeworkTasks = {};
+    state.expandedHwIds.clear();
+    state.selectedTaskKeys.clear();
+    renderHomeworkCards();
+    showToast('✅ 已加载 ' + list.length + ' 个作业，点击作业卡片展开任务', 'success');
+  } catch (e){
+    dom.homeworkCards.innerHTML = '<div class="hw-empty">❌ 加载失败: ' + escapeHtml(e.message) + '</div>';
+    showToast('加载作业列表失败: ' + e.message, 'error');
+  }
+}
+
+function handleLogout(){
+  state.token = ''; state.isLoggedIn = false; state.userId = '';
+  state.homeworkList = []; state.homeworkTasks = {}; state.expandedHwIds.clear();
+  state.selectedTaskKeys.clear();
+  state.videoIsRunning = false; state.videoShouldStop = true;
+  state.hwIsRunning = false; state.hwShouldStop = true;
+  state.pIsRunning = false; state.pShouldStop = true;
+  $('#loginSuccess').style.display = 'none';
+  $('#logoutBtn').style.display = 'none';
+  var btn = $('#loginBtn');
+  btn.disabled = false; btn.textContent = '🚀 登录';
+  dom.homeworkCards.innerHTML = '<div class="hw-login-hint">请先登录，登录后自动获取作业列表<br>点击作业卡片展开查看内部任务</div>';
+  updateSelectedCount();
+  vdom.startBtn.disabled = true; vdom.pauseBtn.disabled = true; vdom.stopBtn.disabled = true;
+  hdom.startBtn.disabled = true; hdom.pauseBtn.disabled = true; hdom.stopBtn.disabled = true;
+  pdom.startBtn.disabled = true; pdom.pauseBtn.disabled = true; pdom.stopBtn.disabled = true;
+  addLog(vdom.logArea, '👋 已退出', 'info');
+  showToast('已退出', 'info');
+  setStatus('offline', '未登录');
+}
+
+// ============================================================
+// 主题切换 & 事件绑定
+// ============================================================
+function initTheme(){
+  var themeToggle = document.getElementById('themeToggle');
+  var html = document.documentElement;
+  var isDark = false;
+  themeToggle.addEventListener('click', function(){
+    isDark = !isDark;
+    if (isDark){
+      html.setAttribute('data-theme', 'dark');
+      themeToggle.innerHTML = '<span class="icon">☀️</span><span class="text">切换蓝白模式</span>';
+    } else {
+      html.removeAttribute('data-theme');
+      themeToggle.innerHTML = '<span class="icon">🌙</span><span class="text">切换黑夜模式</span>';
+    }
+  });
+}
+
+function bindEvents(){
+  dom.tabBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      dom.tabBtns.forEach(function(b){ b.classList.remove('active'); });
+      this.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(function(el){ el.classList.remove('active'); });
+      var target = document.getElementById(this.dataset.tab);
+      if (target) target.classList.add('active');
+    });
+  });
+
+  $('#loginBtn').addEventListener('click', handleLogin);
+  $('#logoutBtn').addEventListener('click', handleLogout);
+  $('#refreshHwBtn').addEventListener('click', function(){
+    if (!state.token){ showToast('请先登录', 'warn'); return; }
+    loadHomeworkList();
+  });
+
+  $('#expandAllBtn').addEventListener('click', async function(){
+    if (!state.homeworkList.length){ showToast('请先登录', 'warn'); return; }
+    for (var i = 0; i < state.homeworkList.length; i++){
+      var hwId = String(state.homeworkList[i].homeworkId);
+      if (!state.homeworkTasks[hwId]){
+        state.expandedHwIds.add(hwId);
+        renderHomeworkCards();
+        try { await loadHomeworkTasks(hwId); } catch (e){}
+      } else {
+        state.expandedHwIds.add(hwId);
+      }
+    }
+    renderHomeworkCards();
+    showToast('✅ 已展开全部作业', 'success');
+  });
+
+  $('#collapseAllBtn').addEventListener('click', function(){
+    state.expandedHwIds.clear();
+    renderHomeworkCards();
+  });
+
+  $('#selectAllTasksBtn').addEventListener('click', function(){
+    Object.keys(state.homeworkTasks).forEach(function(hwId){
+      (state.homeworkTasks[hwId] || []).forEach(function(t){
+        state.selectedTaskKeys.add(taskKey(hwId, t.taskId));
+      });
+    });
+    state.expandedHwIds.forEach(function(hwId){
+      var bodyEl = document.querySelector('[data-body="' + hwId + '"]');
+      if (bodyEl) renderTaskList(bodyEl, hwId);
+    });
+    renderHomeworkCards();
+    updateSelectedCount();
+    showToast('✅ 已勾选所有已加载的任务', 'success');
+  });
+
+  $('#clearAllTasksBtn').addEventListener('click', function(){
+    state.selectedTaskKeys.clear();
+    state.expandedHwIds.forEach(function(hwId){
+      var bodyEl = document.querySelector('[data-body="' + hwId + '"]');
+      if (bodyEl) renderTaskList(bodyEl, hwId);
+    });
+    renderHomeworkCards();
+    updateSelectedCount();
+    showToast('已清空勾选', 'info');
+  });
+
+  vdom.startBtn.addEventListener('click', videoStartStudy);
+  vdom.pauseBtn.addEventListener('click', function(){
+    if (!state.videoIsRunning) return;
+    state.videoIsPaused = !state.videoIsPaused;
+    this.textContent = state.videoIsPaused ? '▶ 继续' : '⏸ 暂停';
+    setStatus('busy', state.videoIsPaused ? '已暂停' : '刷课中');
+  });
+  vdom.stopBtn.addEventListener('click', function(){
+    if (!state.videoIsRunning) return;
+    state.videoShouldStop = true; state.videoIsPaused = false;
+    vdom.pauseBtn.textContent = '⏸ 暂停';
+    addLog(vdom.logArea, '⏹️ 正在停止...', 'warn');
+  });
+
+  hdom.startBtn.addEventListener('click', homeworkStartStudy);
+  hdom.pauseBtn.addEventListener('click', function(){
+    if (!state.hwIsRunning) return;
+    state.hwIsPaused = !state.hwIsPaused;
+    this.textContent = state.hwIsPaused ? '▶ 继续' : '⏸ 暂停';
+    setStatus('busy', state.hwIsPaused ? '习题暂停' : '刷习题');
+  });
+  hdom.stopBtn.addEventListener('click', function(){
+    if (!state.hwIsRunning) return;
+    state.hwShouldStop = true; state.hwIsPaused = false;
+    hdom.pauseBtn.textContent = '⏸ 暂停';
+    addLog(hdom.logArea, '⏹️ 正在停止...', 'warn');
+  });
+
+  pdom.startBtn.addEventListener('click', paperStartStudy);
+  pdom.pauseBtn.addEventListener('click', function(){
+    if (!state.pIsRunning) return;
+    state.pIsPaused = !state.pIsPaused;
+    this.textContent = state.pIsPaused ? '▶ 继续' : '⏸ 暂停';
+    setStatus('busy', state.pIsPaused ? '试卷暂停' : '刷试卷');
+  });
+  pdom.stopBtn.addEventListener('click', function(){
+    if (!state.pIsRunning) return;
+    state.pShouldStop = true; state.pIsPaused = false;
+    pdom.pauseBtn.textContent = '⏸ 暂停';
+    addLog(pdom.logArea, '⏹️ 正在停止...', 'warn');
+  });
+}
+
+function init(){
+  initTheme();
+  bindEvents();
+  setStatus('offline', '未登录');
+  addLog(vdom.logArea, '🟢 IVY 系统就绪，请先登录', 'info');
+  addLog(hdom.logArea, '🟢 IVY 系统就绪，请先登录', 'info');
+  addLog(pdom.logArea, '🟢 IVY 系统就绪，请先登录', 'info');
+  updateSelectedCount();
+}
+
+init();
+
+})();
+</script>
 </body>
 </html>
