@@ -719,21 +719,6 @@ async function videoProcessTask(hwId, lessonId){
     return false;
   }
 }
-      if (!isLast && lastPlay < finishNeed) await sleep(INTERVAL + Math.floor(Math.random() * 400) - 200);
-    }
-    var finalTask = await apiGetTaskInfo(token, schoolId, hwId, lessonId, contentType);
-    if (finalTask && finalTask.playTime >= finishNeed){
-      addLog(vdom.logArea, '✅ 达标: ' + lessonId.slice(0,12) + '...', 'success');
-      await apiReportVideoPoint(token, hwId, lessonId);
-      return true;
-    }
-    return false;
-  } catch (e){
-    addLog(vdom.logArea, '❌ 处理异常 ' + lessonId.slice(0,12) + '...: ' + e.message, 'error');
-    return false;
-  }
-}
-
 // ============================================================
 // 课后习题 API
 // ============================================================
